@@ -1,0 +1,8 @@
+ticket: 001
+from: dana@acme.example
+priority: high
+subject: checkout page returns 500 on empty cart
+
+Steps to reproduce: open the store, remove every item, click "checkout".
+The page shows a 500 instead of an empty-cart message. Started after the
+Tuesday deploy. Blocking a customer demo on Friday.

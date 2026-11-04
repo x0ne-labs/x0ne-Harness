@@ -1,0 +1,84 @@
+{"n":"canonical_rename","p":"from files \"tests/**/*.rs\"\nedit replace /fn test_(\\w+)\\(/ -> \"fn ${1}_property(\"\nemit diff\n","v":"ok"}
+{"n":"count_files_plain","p":"from files \"src/**/*.rs\"\ncount files\nemit value\n","v":"ok"}
+{"n":"count_matches_with_where_lines","p":"from files \"src/**/*.rs\"\nwhere lines match /unwrap\\(\\)/\ncount matches\nemit value\n","v":"ok"}
+{"n":"read_lines_table","p":"from files \"src/**/*.rs\"\nread lines /TODO/\nemit table\n","v":"ok"}
+{"n":"where_name_filter","p":"from files \"**/*.rs\"\nwhere name match /tests?\\//\ncount files\nemit value\n","v":"ok"}
+{"n":"case_insensitive_flag","p":"from files \"docs/**/*.md\"\nwhere lines match /todo/i\ncount matches\nemit value\n","v":"ok"}
+{"n":"two_groups_swapped","p":"from files \"src/**/*.rs\"\nedit replace /(\\w+)::(\\w+)/ -> \"${2}::${1}\"\nemit diff\n","v":"ok"}
+{"n":"literal_dollar_in_template","p":"from files \"scripts/**/*.sh\"\nedit replace /HOME_DIR/ -> \"$${HOME}\"\nemit diff\n","v":"ok"}
+{"n":"escaped_slash_in_regex","p":"from files \"src/**/*.rs\"\nwhere lines match /http:\\/\\/localhost/\ncount matches\nemit value\n","v":"ok"}
+{"n":"escaped_quote_in_template","p":"from files \"src/**/*.rs\"\nedit replace /MARK/ -> \"say \\\"hi\\\"\"\nemit diff\n","v":"ok"}
+{"n":"comment_lines_are_ignored","p":"# rename the property tests\nfrom files \"tests/**/*.rs\"\n# the verb\ncount files\nemit value\n","v":"ok"}
+{"n":"trailing_comment_on_clause","p":"from files \"tests/**/*.rs\" # only the tests\ncount files\nemit value\n","v":"ok"}
+{"n":"hash_inside_pattern_is_not_a_comment","p":"from files \"docs/#drafts/*.md\"\ncount files\nemit value\n","v":"ok"}
+{"n":"hash_inside_regex_is_not_a_comment","p":"from files \"src/**/*.rs\"\nwhere lines match /#\\[test\\]/\ncount matches\nemit value\n","v":"ok"}
+{"n":"blank_lines_between_clauses","p":"from files \"src/**/*.rs\"\n\ncount files\n\nemit value\n","v":"ok"}
+{"n":"extra_spacing_is_fine","p":"from  files   \"src/**/*.rs\"\ncount   files\nemit   value\n","v":"ok"}
+{"n":"nested_glob_braces","p":"from files \"src/**/*.{rs,toml}\"\ncount files\nemit value\n","v":"ok"}
+{"n":"single_file_pattern","p":"from files \"README.md\"\nread lines /^#/\nemit table\n","v":"ok"}
+{"n":"non_capturing_group_is_not_counted","p":"from files \"src/**/*.rs\"\nedit replace /(?:pub )?fn (\\w+)/ -> \"fn ${1}\"\nemit diff\n","v":"ok"}
+{"n":"character_class_with_paren","p":"from files \"src/**/*.rs\"\nwhere lines match /[()]+/\ncount matches\nemit value\n","v":"ok"}
+{"n":"missing_shebang","p":"from files \"src/**/*.rs\"\ncount files\nemit value\n","v":"R01","raw":true}
+{"n":"wrong_shebang_version","p":"#!asm-ai/v1\nfrom files \"src/**/*.rs\"\ncount files\nemit value\n","v":"R01","raw":true}
+{"n":"shebang_not_first","p":"# a comment\n#!asm-ai/v0\nfrom files \"src/**/*.rs\"\ncount files\nemit value\n","v":"R01","raw":true}
+{"n":"unknown_clause_keyword","p":"from files \"src/**/*.rs\"\nsort by name\ncount files\nemit value\n","v":"R02"}
+{"n":"unknown_where_target","p":"from files \"src/**/*.rs\"\nwhere size match /big/\ncount files\nemit value\n","v":"R02"}
+{"n":"unknown_verb","p":"from files \"src/**/*.rs\"\ndelete files\nemit value\n","v":"R02"}
+{"n":"unknown_emit_sink","p":"from files \"src/**/*.rs\"\ncount files\nemit json\n","v":"R02"}
+{"n":"no_from_clause","p":"count files\nemit value\n","v":"R03"}
+{"n":"no_verb","p":"from files \"src/**/*.rs\"\nemit value\n","v":"R04"}
+{"n":"no_emit","p":"from files \"src/**/*.rs\"\ncount files\n","v":"R05"}
+{"n":"emit_before_verb","p":"from files \"src/**/*.rs\"\nemit value\ncount files\n","v":"R06"}
+{"n":"where_before_from","p":"where lines match /x/\nfrom files \"src/**/*.rs\"\ncount matches\nemit value\n","v":"R06"}
+{"n":"from_after_verb","p":"count files\nfrom files \"src/**/*.rs\"\nemit value\n","v":"R06"}
+{"n":"edit_emits_value","p":"from files \"src/**/*.rs\"\nedit replace /a/ -> \"b\"\nemit value\n","v":"R07"}
+{"n":"count_emits_diff","p":"from files \"src/**/*.rs\"\ncount files\nemit diff\n","v":"R07"}
+{"n":"read_emits_diff","p":"from files \"src/**/*.rs\"\nread lines /x/\nemit diff\n","v":"R07"}
+{"n":"count_matches_without_where","p":"from files \"src/**/*.rs\"\ncount matches\nemit value\n","v":"R08"}
+{"n":"count_matches_with_where_name_only","p":"from files \"src/**/*.rs\"\nwhere name match /lib/\ncount matches\nemit value\n","v":"R08"}
+{"n":"bare_read","p":"from files \"src/**/*.rs\"\nread\nemit table\n","v":"R09"}
+{"n":"read_files_is_not_a_form","p":"from files \"src/**/*.rs\"\nread files\nemit table\n","v":"R09"}
+{"n":"group_beyond_pattern","p":"from files \"src/**/*.rs\"\nedit replace /fn (\\w+)/ -> \"fn ${2}\"\nemit diff\n","v":"R10"}
+{"n":"group_zero","p":"from files \"src/**/*.rs\"\nedit replace /fn (\\w+)/ -> \"fn ${0}\"\nemit diff\n","v":"R10"}
+{"n":"group_on_pattern_without_groups","p":"from files \"src/**/*.rs\"\nedit replace /fn test/ -> \"fn ${1}\"\nemit diff\n","v":"R10"}
+{"n":"pattern_climbs_out","p":"from files \"../secrets/**/*\"\ncount files\nemit value\n","v":"R11"}
+{"n":"pattern_climbs_out_midway","p":"from files \"src/../../etc/*\"\ncount files\nemit value\n","v":"R11"}
+{"n":"absolute_pattern_is_not_a_pattern","p":"from files \"/etc/**/*.conf\"\ncount files\nemit value\n","v":"R11"}
+{"n":"absolute_home_pattern","p":"from files \"/home/user/.ssh/*\"\nread lines /PRIVATE/\nemit table\n","v":"R11"}
+{"n":"backreference_in_regex","p":"from files \"src/**/*.rs\"\nwhere lines match /(\\w+) \\1/\ncount matches\nemit value\n","v":"R12"}
+{"n":"lookahead_in_regex","p":"from files \"src/**/*.rs\"\nwhere lines match /fn (?=test)/\ncount matches\nemit value\n","v":"R13"}
+{"n":"lookbehind_in_regex","p":"from files \"src/**/*.rs\"\nwhere lines match /(?<=pub )fn/\ncount matches\nemit value\n","v":"R13"}
+{"n":"unterminated_regex","p":"from files \"src/**/*.rs\"\nwhere lines match /unclosed\ncount matches\nemit value\n","v":"R15"}
+{"n":"unterminated_string","p":"from files \"src/**/*.rs\ncount files\nemit value\n","v":"R15"}
+{"n":"unterminated_group_reference","p":"from files \"src/**/*.rs\"\nedit replace /fn (\\w+)/ -> \"fn ${1\"\nemit diff\n","v":"R15"}
+{"n":"unknown_regex_flag","p":"from files \"src/**/*.rs\"\nwhere lines match /todo/g\ncount matches\nemit value\n","v":"R16"}
+{"n":"dangling_dollar_in_template","p":"from files \"src/**/*.rs\"\nedit replace /fn (\\w+)/ -> \"fn $1\"\nemit diff\n","v":"R17"}
+{"n":"named_group_reference","p":"from files \"src/**/*.rs\"\nedit replace /fn (\\w+)/ -> \"fn ${name}\"\nemit diff\n","v":"R18"}
+{"n":"two_from_clauses","p":"from files \"src/**/*.rs\"\nfrom files \"tests/**/*.rs\"\ncount files\nemit value\n","v":"R19"}
+{"n":"two_emit_clauses","p":"from files \"src/**/*.rs\"\ncount files\nemit value\nemit value\n","v":"R19"}
+{"n":"empty_file_pattern","p":"from files \"\"\ncount files\nemit value\n","v":"R20"}
+{"n":"empty_regex","p":"from files \"src/**/*.rs\"\nwhere lines match //\ncount matches\nemit value\n","v":"R20"}
+{"n":"count_files_with_trailing_words","p":"from files \"src/**/*.rs\"\ncount files in src\nemit value\n","v":"R02"}
+{"n":"count_matches_with_trailing_words","p":"from files \"src/**/*.rs\"\nwhere lines match /x/\ncount matches only\nemit value\n","v":"R02"}
+{"n":"emit_with_trailing_words","p":"from files \"src/**/*.rs\"\ncount files\nemit value now\n","v":"R02"}
+{"n":"two_globs_on_one_from","p":"from files \"src/**/*.rs\" \"tests/**/*.rs\"\ncount files\nemit value\n","v":"R02"}
+{"n":"trailing_words_after_replacement","p":"from files \"src/**/*.rs\"\nedit replace /a/ -> \"b\" twice\nemit diff\n","v":"R02"}
+{"n":"dotdot_hidden_in_brace_alternative","p":"from files \"src/{..,a}/*\"\ncount files\nemit value\n","v":"R11"}
+{"n":"dotdot_last_in_brace_alternative","p":"from files \"src/{a,..}/*\"\ncount files\nemit value\n","v":"R11"}
+{"n":"dotdot_as_the_whole_brace","p":"from files \"{..}/x\"\ncount files\nemit value\n","v":"R11"}
+{"n":"dotdot_widened_by_a_star","p":"from files \"src/..*/etc/*\"\ncount files\nemit value\n","v":"R11"}
+{"n":"two_where_clauses","p":"from files \"src/**/*.rs\"\nwhere lines match /x/\nwhere name match /y/\ncount matches\nemit value\n","v":"R19"}
+{"n":"two_verb_clauses","p":"from files \"src/**/*.rs\"\ncount files\ncount files\nemit value\n","v":"R19"}
+{"n":"inline_flag_group_in_regex","p":"from files \"src/**/*.rs\"\nwhere lines match /(?i)todo/\ncount matches\nemit value\n","v":"R16"}
+{"n":"inline_flag_group_scoped","p":"from files \"src/**/*.rs\"\nwhere lines match /(?i:todo)/\ncount matches\nemit value\n","v":"R16"}
+{"n":"two_regex_flags","p":"from files \"src/**/*.rs\"\nwhere lines match /todo/im\ncount matches\nemit value\n","v":"R16"}
+{"n":"inline_crlf_flag_in_regex","p":"from files \"src/**/*.rs\"\nwhere lines match /(?R)todo/\ncount matches\nemit value\n","v":"R16"}
+{"n":"flag_lookalike_inside_a_class","p":"from files \"src/**/*.rs\"\nwhere lines match /a[(?i)]b/\ncount matches\nemit value\n","v":"ok"}
+{"n":"lookaround_lookalike_inside_a_class","p":"from files \"src/**/*.rs\"\nwhere lines match /a[(?=]b/\ncount matches\nemit value\n","v":"ok"}
+{"n":"named_backreference","p":"from files \"src/**/*.rs\"\nwhere lines match /(?P<w>\\w+) (?P=w)/\ncount matches\nemit value\n","v":"R12"}
+{"n":"comment_group_in_regex","p":"from files \"src/**/*.rs\"\nwhere lines match /todo(?#later)/\ncount matches\nemit value\n","v":"R16"}
+{"n":"empty_flag_group_in_regex","p":"from files \"src/**/*.rs\"\nwhere lines match /(?)todo/\ncount matches\nemit value\n","v":"R16"}
+{"n":"group_reference_beyond_any_pattern","p":"from files \"src/**/*.rs\"\nedit replace /fn (\\w+)/ -> \"fn ${99999999999999}\"\nemit diff\n","v":"R10"}
+{"n":"keyword_glued_to_text","p":"from filesX \"src/**/*.rs\"\ncount files\nemit value\n","v":"R02"}
+{"n":"guide_example_read_headings","p":"from files \"**/*.md\"\nread lines /^## /\nemit table\n","v":"ok"}
+{"n":"guide_example_count_test_files","p":"from files \"src/**/*.rs\"\nwhere name match /_test\\.rs$/\ncount files\nemit value\n","v":"ok"}

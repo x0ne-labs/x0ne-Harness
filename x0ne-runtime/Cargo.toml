@@ -1,0 +1,179 @@
+[package]
+name = "x0ne-runtime"
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "X0NE Runtime: Secure agentic runtime for AI"
+authors = ["x0ne"]
+readme = "README.md"
+keywords = ["ai", "agent", "runtime", "policy", "executor"]
+categories = ["command-line-utilities"]
+
+[lib]
+name = "x0ne_runtime"
+path = "src/lib.rs"
+
+[[bin]]
+name = "x0ne-runtime"
+path = "src/main.rs"
+
+[[bin]]
+name = "x0ne-scenario-runner"
+path = "src/bin/scenario_runner.rs"
+
+# Unified training-data CLI — replaces the prior six bins
+# (x0ne-dataset-{build,index,query,export} + x0ne-eval + x0ne-export-schema)
+# with a single binary dispatching via clap subcommands.
+[[bin]]
+name = "x0ne-dataset"
+path = "src/bin/dataset.rs"
+
+# `x0ne-artifact-proxy` lives in the standalone `x0ne-artifact` crate now —
+# pulling the proxy out of `x0ne-runtime` keeps its build graph small and
+# decouples the daemon from runtime executor changes.
+
+[dependencies]
+x0ne-actions = { path = "../x0ne-actions" }
+x0ne-audit   = { path = "../x0ne-audit" }
+x0ne-asm      = { path = "../x0ne-asm" }
+# asm-ai host (T5). Optional and OFF by default: the default binary must not
+# carry a wasm engine. LTS line, pinned exact: its tree fixes wasmparser at
+# 0.236, the version the x0ne-asm verifier validates under.
+wasmtime = { version = "=36.0.19", default-features = false, features = ["cranelift", "runtime", "std"], optional = true }
+x0ne-cloud    = { path = "../x0ne-cloud" }
+# Sibling crates
+x0ne-mcp      = { path = "../x0ne-mcp" }
+x0ne-artifact = { path = "../x0ne-artifact" }
+x0ne-dataset  = { path = "../x0ne-dataset" }
+
+# Workspace-shared
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true
+chrono.workspace = true
+dirs.workspace = true
+walkdir.workspace = true
+
+# Core-specific
+axum.workspace = true
+tower-http.workspace = true
+glob.workspace = true
+regex.workspace = true
+uuid = { version = "1", features = ["v4"] }
+notify = "8"
+sha2.workspace = true
+md-5 = "0.11"
+sha1 = "0.11"
+# Expands asm-ai manifest patterns into concrete paths. `ignore` (its former
+# parent, unused) was removed on 2026-09-23; `globset` stays as a direct dependency.
+#
+# SECURITY: `globset`, never `glob` 0.3 (above). `glob` has no brace expansion:
+# `*.{rs,toml}` (five valid corpus A programs) would match zero files silently,
+# a proof that covers nothing while looking complete.
+globset = "0.4"
+tempfile.workspace = true
+reqwest.workspace = true
+futures.workspace = true
+url.workspace = true
+# Embedded scripting for user-defined functions ("scripted primitives" — Tier 1
+# of the agent-extensible-primitives story; Tier 2 is WASM via Wasmtime).
+# Rhai is a small (~1MB compiled), pure-Rust, capability-controlled scripting
+# language — chosen over Lua / JS for: (a) zero system deps, (b) static types
+# in the host glue, (c) sync execution with timeout cooperation, (d) trivial
+# JSON ↔ Dynamic marshalling. Compile-time disable with --no-default-features
+# (the prim-functions feature) for a leaner runtime.
+# Screenshot masking under desktop.allowed_apps (decode, black out, encode).
+image = { version = "0.25", default-features = false, features = ["png"] }
+rhai = { version = "1.26", default-features = false, features = ["std", "sync"] }
+
+# Reflink-aware snapshots: FICLONE on Linux / clonefile on macOS APFS.
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }
+
+[dev-dependencies]
+# The verifier's ADVERSARIAL modules are written in WAT, not hand-encoded LEB128
+# (that would be a test debugging its harness). Pinned exactly to x0ne-asm's
+# version: two `wat` versions are two encoders. Dev-dependency: nothing ships.
+wat = "=1.236.0"
+# Test only: enumerates every wasm proposal so the engine lists stay decided.
+wasmparser = "=0.236.0"
+
+# ── Cargo features ────────────────────────────────────────────────────────────
+#
+# By default, every action family is compiled in.  The `default = ["all-prims"]`
+# feature pulls in all primitive families so a stock `cargo build` produces a
+# fully-featured runtime — no behaviour change for normal users.
+#
+# To produce a leaner binary (e.g. a headless CI runner with no desktop, no
+# LXC, no LLM, no network) build with selective features:
+#
+#   # Bare runtime: only the always-compiled core (fs, math, string, system,
+#   # memory, validate, snapshot, human, pipeline, try, assert, composite,
+#   # meta, logs, search, process, patch). About half the binary size.
+#   cargo build --release --no-default-features
+#
+#   # Headless: skip desktop, keep network/git/ml/events
+#   cargo build --release --no-default-features \
+#       --features "prim-network prim-git prim-ml prim-events"
+#
+# When an action belongs to a disabled family, the binary still parses it (so
+# the wire format stays stable) but the executor returns
+# `ErrorKind::FeatureDisabled`.
+#
+# The `self_test` family is intentionally excluded from `default`. It is
+# compiled automatically in debug builds via `#[cfg(debug_assertions)]`, and
+# can be re-enabled in release builds with `--features self_test`.
+
+[features]
+default = ["all-prims"]
+
+# Convenience meta-feature: enable every optional primitive family.
+# `prim-incus` is gone: container management moved to x0ne-orchestrator
+# (privilege boundary fix — see x0ne-orchestrator/src/incus_actions.rs).
+all-prims = [
+    "prim-desktop",
+    "prim-ml",
+    "prim-git",
+    "prim-network",
+    "prim-events",
+]
+
+# Optional primitive families (each maps to one or more variants of `Action`).
+prim-desktop = []
+prim-ml      = []
+prim-git     = []
+prim-network = []
+prim-events  = []
+
+# Diagnostic / self-test entry point. Always available in debug builds via
+# `cfg(debug_assertions)`. In release, must be explicitly opted in:
+#   cargo build --release --features self_test
+self_test = []
+
+# asm-ai execution host (wasmtime). OFF by default; enabling it links the engine
+# but still executes nothing: running a program needs an explicit opt-in (T6+).
+asm-exec = ["dep:wasmtime"]
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "gen-action-docs"
+path = "src/bin/gen_action_docs.rs"
+
+# Listen is a prim-events action.
+[[test]]
+name = "listen_reads_a_real_stream"
+required-features = ["prim-events"]
+
+[target.'cfg(target_os = "linux")'.dependencies]
+landlock = { workspace = true }

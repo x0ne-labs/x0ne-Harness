@@ -1,0 +1,34 @@
+[package]
+name = "x0ne-artifact"
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "X0NE artifact model + storage layout (lib only — serving lives in x0ne-runtime / x0ne-orchestrator, not in a separate proxy binary)"
+authors = ["x0ne"]
+keywords = ["ai", "agent", "artifact"]
+categories = ["filesystem"]
+
+[lib]
+name = "x0ne_artifact"
+path = "src/lib.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+dirs.workspace = true
+# Artifact ids: 128 random bits from the OS (`getrandom`), never the clock.
+uuid = { workspace = true, features = ["v4"] }
+
+# kill(2) for the service stop.
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

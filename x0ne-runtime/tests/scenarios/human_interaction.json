@@ -1,0 +1,135 @@
+[
+  {
+    "name": "ask_human_returns_typed_answer",
+    "description": "AskHuman must surface the operator's freeform answer verbatim",
+    "action": { "type": "AskHuman", "question": "What is your favorite cipher?" },
+    "human_responses": ["AES-256-GCM"],
+    "expect": {
+      "success": true,
+      "output_kind": "human_answer",
+      "human": { "answer": "AES-256-GCM" }
+    }
+  },
+
+  {
+    "name": "ask_human_trims_trailing_whitespace",
+    "description": "Whitespace and trailing newlines must be trimmed before being returned",
+    "action": { "type": "AskHuman", "question": "Type your name" },
+    "human_responses": ["  Alex  "],
+    "expect": {
+      "success": true,
+      "human": { "answer": "Alex" }
+    }
+  },
+
+  {
+    "name": "ask_human_with_no_response_fails_loudly",
+    "description": "If no answer is queued, AskHuman must error rather than block on real stdin",
+    "action": { "type": "AskHuman", "question": "Unanswered" },
+    "human_responses": [],
+    "expect": {
+      "success": false,
+      "error_kind": "internal"
+    }
+  },
+
+  {
+    "name": "confirm_y_returns_true",
+    "description": "Common short-form 'y' must yield confirmed=true",
+    "action": { "type": "Confirm", "message": "Apply changes?" },
+    "human_responses": ["y"],
+    "expect": {
+      "success": true,
+      "output_kind": "human_confirmed",
+      "human": { "confirmed": true }
+    }
+  },
+
+  {
+    "name": "confirm_yes_returns_true",
+    "description": "Long-form 'yes' must yield confirmed=true",
+    "action": { "type": "Confirm", "message": "Proceed?" },
+    "human_responses": ["yes"],
+    "expect": {
+      "success": true,
+      "human": { "confirmed": true }
+    }
+  },
+
+  {
+    "name": "confirm_uppercase_yes_returns_true",
+    "description": "Confirm parser must be case-insensitive",
+    "action": { "type": "Confirm", "message": "Continue?" },
+    "human_responses": ["YES"],
+    "expect": {
+      "success": true,
+      "human": { "confirmed": true }
+    }
+  },
+
+  {
+    "name": "confirm_oui_returns_true",
+    "description": "French 'oui' is accepted as confirmation (locale-friendly)",
+    "action": { "type": "Confirm", "message": "Confirmer ?" },
+    "human_responses": ["oui"],
+    "expect": {
+      "success": true,
+      "human": { "confirmed": true }
+    }
+  },
+
+  {
+    "name": "confirm_n_returns_false",
+    "description": "Short 'n' must yield confirmed=false (default-deny)",
+    "action": { "type": "Confirm", "message": "Delete file?" },
+    "human_responses": ["n"],
+    "expect": {
+      "success": true,
+      "human": { "confirmed": false }
+    }
+  },
+
+  {
+    "name": "confirm_empty_response_returns_false",
+    "description": "Empty input is treated as 'no' — default-deny semantics for safety",
+    "action": { "type": "Confirm", "message": "rm -rf ?" },
+    "human_responses": [""],
+    "expect": {
+      "success": true,
+      "human": { "confirmed": false }
+    }
+  },
+
+  {
+    "name": "confirm_garbage_returns_false",
+    "description": "Anything that isn't an explicit yes form must be treated as 'no'",
+    "action": { "type": "Confirm", "message": "Format disk?" },
+    "human_responses": ["maybe later"],
+    "expect": {
+      "success": true,
+      "human": { "confirmed": false }
+    }
+  },
+
+  {
+    "name": "confirm_with_whitespace_padded_yes",
+    "description": "Padded ' yes ' must still be recognised as confirmation",
+    "action": { "type": "Confirm", "message": "Proceed?" },
+    "human_responses": [" yes "],
+    "expect": {
+      "success": true,
+      "human": { "confirmed": true }
+    }
+  },
+
+  {
+    "name": "confirm_with_no_response_fails_loudly",
+    "description": "Empty queue on Confirm must error, not block",
+    "action": { "type": "Confirm", "message": "?" },
+    "human_responses": [],
+    "expect": {
+      "success": false,
+      "error_kind": "internal"
+    }
+  }
+]

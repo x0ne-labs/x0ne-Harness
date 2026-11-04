@@ -1,0 +1,76 @@
+[
+  {
+    "name": "write_then_read_back",
+    "description": "Pipeline: write a file then read it back — verifies content round-trips",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/pipeline_out.txt", "content": "pipeline_content_42" },
+        { "type": "ReadFile", "path": "{{TEST_DIR}}/pipeline_out.txt" }
+      ]
+    },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "write_then_list_dir",
+    "description": "Pipeline: write a file then verify it appears in the directory listing via RunCommand ls (ListDir removed in v0.3)",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/pipeline_listed.txt", "content": "listed" },
+        { "type": "RunCommand", "command": "ls", "args": ["{{TEST_DIR}}"] }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "output_contains": "pipeline_listed.txt"
+    }
+  },
+  {
+    "name": "run_command_check_output",
+    "description": "Pipeline: run echo then read logs — verifies command output",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "RunCommand", "command": "echo", "args": ["pipeline_test_output"] }
+      ]
+    },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "multi_step_file_operations",
+    "description": "Pipeline: create dir (via python3, CreateDir removed in v0.3), write file, checksum, read back",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "RunCommand", "command": "python3", "args": ["-c", "import os; os.makedirs('{{TEST_DIR}}/pipeline_sub', exist_ok=True)"] },
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/pipeline_sub/data.txt", "content": "checksum me" },
+        { "type": "Checksum", "path": "{{TEST_DIR}}/pipeline_sub/data.txt", "algorithm": "sha256" },
+        { "type": "ReadFile", "path": "{{TEST_DIR}}/pipeline_sub/data.txt" }
+      ]
+    },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "pipeline_stops_on_error",
+    "description": "Pipeline with stop_on_error=true: first step succeeds, second fails (nonexistent file), third never runs. T2: pipeline-level success must be false when any step fails (no more lying footer).",
+    "action": {
+      "type": "Pipeline",
+      "stop_on_error": true,
+      "steps": [
+        { "type": "ReadFile", "path": "{{TEST_DIR}}/hello.txt" },
+        { "type": "ReadFile", "path": "/tmp/x0ne-scenario-does-not-exist-xyz.txt" },
+        { "type": "ReadFile", "path": "{{TEST_DIR}}/hello.txt" }
+      ]
+    },
+    "expect": {
+      "success": false
+    }
+  }
+]

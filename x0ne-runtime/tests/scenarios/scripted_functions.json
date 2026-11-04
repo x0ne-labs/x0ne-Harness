@@ -1,0 +1,203 @@
+[
+  {
+    "name": "define_function_returns_function_registered",
+    "description": "DefineFunction must succeed and return FunctionRegistered with the source hash",
+    "action": {
+      "type": "DefineFunction",
+      "name": "slugify",
+      "description": "lowercase + replace whitespace with dashes",
+      "source": "fn run(s) { let t = s.to_lower(); t.replace(\" \", \"-\"); t }",
+      "params": ["s"],
+      "returns": "string"
+    },
+    "expect": {
+      "success": true,
+      "output_kind": "function_registered",
+      "output_contains": "slugify"
+    }
+  },
+
+  {
+    "name": "call_function_round_trips_string",
+    "description": "After DefineFunction, CallFunction must run the script and return the value",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        {
+          "type": "DefineFunction",
+          "name": "slugify_call",
+          "source": "fn run(s) { let t = s.to_lower(); t.replace(\" \", \"-\"); t }",
+          "params": ["s"]
+        },
+        {
+          "type": "CallFunction",
+          "name": "slugify_call",
+          "args": ["Hello X0NE World"]
+        }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "steps_total": 2, "steps_completed": 2, "step_success": [true, true] }
+    }
+  },
+
+  {
+    "name": "function_returns_typed_int",
+    "description": "Functions returning ints must round-trip through JSON without losing precision",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        {
+          "type": "DefineFunction",
+          "name": "word_count",
+          "source": "fn run(s) { s.split(' ').len }",
+          "params": ["s"],
+          "returns": "integer"
+        },
+        {
+          "type": "CallFunction",
+          "name": "word_count",
+          "args": ["the quick brown fox"]
+        }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "steps_total": 2, "steps_completed": 2, "step_success": [true, true] }
+    }
+  },
+
+  {
+    "name": "function_returns_object_shape",
+    "description": "Object returns are flattened into JSON {greeting, len}",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        {
+          "type": "DefineFunction",
+          "name": "greet",
+          "source": "fn run(name) { #{ greeting: \"hello, \" + name, len: name.len } }",
+          "params": [{"name": "name", "type": "string"}],
+          "returns": "object"
+        },
+        {
+          "type": "CallFunction",
+          "name": "greet",
+          "args": ["world"]
+        }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "steps_total": 2, "steps_completed": 2, "step_success": [true, true] }
+    }
+  },
+
+  {
+    "name": "list_functions_after_define",
+    "description": "ListFunctions must include freshly defined entries",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        {
+          "type": "DefineFunction",
+          "name": "fn_a",
+          "source": "fn run() { 1 }"
+        },
+        {
+          "type": "DefineFunction",
+          "name": "fn_b",
+          "source": "fn run() { 2 }"
+        },
+        { "type": "ListFunctions" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "steps_total": 3, "steps_completed": 3, "step_success": [true, true, true] }
+    }
+  },
+
+  {
+    "name": "delete_function_removes_entry",
+    "description": "DeleteFunction must remove the entry; subsequent CallFunction must fail",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        {
+          "type": "DefineFunction",
+          "name": "tmp_fn",
+          "source": "fn run() { \"ok\" }"
+        },
+        { "type": "DeleteFunction", "name": "tmp_fn" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "steps_total": 2, "steps_completed": 2, "step_success": [true, true] }
+    }
+  },
+
+  {
+    "name": "define_rejects_invalid_name",
+    "description": "Names with hyphens or uppercase must be rejected at registration",
+    "action": {
+      "type": "DefineFunction",
+      "name": "Bad-Name",
+      "source": "fn run() { 0 }"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "define_rejects_uncompilable_source",
+    "description": "Bad Rhai must fail at registration so the agent learns immediately",
+    "action": {
+      "type": "DefineFunction",
+      "name": "broken_syntax",
+      "source": "fn run() { let x = "
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "call_unknown_function_fails_clearly",
+    "description": "CallFunction on a missing name returns InvalidInput with a hint",
+    "action": {
+      "type": "CallFunction",
+      "name": "this_does_not_exist",
+      "args": []
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "call_caps_runaway_loop",
+    "description": "Op-budget cap must abort an infinite loop within milliseconds",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        {
+          "type": "DefineFunction",
+          "name": "runaway",
+          "source": "fn run() { loop { } }"
+        },
+        { "type": "CallFunction", "name": "runaway", "args": [] }
+      ]
+    },
+    "expect": {
+      "success": false,
+      "pipeline": { "steps_total": 2, "steps_completed": 2, "step_success": [true, false] }
+    }
+  }
+]

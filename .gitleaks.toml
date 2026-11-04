@@ -1,0 +1,66 @@
+# gitleaks configuration: the default rules, minus the fake secrets that tests
+# and docs use on purpose to check redaction. Each allowlist is one fixture:
+# its file AND its exact value, so the same value elsewhere is still reported.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Redaction fixtures: one fake key shared by three test files"
+condition = "AND"
+paths = [
+  '''(^|/)x0ne-audit/src/chain\.rs$''',
+  '''(^|/)x0ne-audit/src/redact\.rs$''',
+  '''(^|/)x0ne-runtime/src/executor/term\.rs$''',
+]
+regexes = ['''^sk-proj-Ab3dEf6hIj9kLmNoPq$''']
+
+[[rules.allowlists]]
+description = "Quickstart test: fake key"
+condition = "AND"
+paths = ['''(^|/)x0ne-orchestrator/src/llm_quickstart\.rs$''']
+regexes = ['''^sk-proj-SECRET-1234$''']
+
+[[rules.allowlists]]
+description = "Session journal masking test: CANARY values"
+condition = "AND"
+paths = ['''(^|/)x0ne-orchestrator/src/session\.rs$''']
+regexes = ['''^CANARYa1b2c3d4e5f6g7h8$''', '''^CANARYhunter2$''']
+
+[[rules.allowlists]]
+description = "Subagent attack test: AWS documentation-style key"
+condition = "AND"
+paths = ['''(^|/)x0ne-subagents/tests/attacks\.rs$''']
+regexes = ['''^AKIA1234567890ABCDEF$''']
+
+[[rules.allowlists]]
+description = "Injection corpus: a legitimate README copy with a placeholder token"
+condition = "AND"
+paths = ['''(^|/)x0ne-orchestrator/tests/fixtures/injection-corpus/legit/x0ne-harness-README\.md$''']
+regexes = ['''^a1b2c3d4e5f60718$''']
+
+[[rules]]
+id = "private-key"
+
+[[rules.allowlists]]
+description = "Redaction test: truncated OpenSSH key block"
+condition = "AND"
+paths = ['''(^|/)x0ne-audit/src/redact\.rs$''']
+regexes = ['''^-----BEGIN OPENSSH PRIVATE KEY-----\\nb3BlbnNzaC1rZXk''']
+
+[[rules.allowlists]]
+description = "Session journal masking test: CANARY key block"
+condition = "AND"
+paths = ['''(^|/)x0ne-orchestrator/src/session\.rs$''']
+regexes = ['''^-----BEGIN OPENSSH PRIVATE KEY-----\\nCANARYb3BlbnNzaC1rZXk''']
+
+[[rules]]
+id = "curl-auth-header"
+
+[[rules.allowlists]]
+description = "Terminal masking test: fake bearer token"
+condition = "AND"
+paths = ['''(^|/)x0ne-runtime/src/executor/term\.rs$''']
+regexes = ['''^abcdefgh12345678$''']

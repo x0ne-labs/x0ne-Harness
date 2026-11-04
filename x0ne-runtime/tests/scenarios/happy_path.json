@@ -1,0 +1,382 @@
+[
+  {
+    "name": "read_existing_file",
+    "description": "Read a file that was created during setup",
+    "action": { "type": "ReadFile", "path": "{{TEST_DIR}}/hello.txt" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "read_file_chunk",
+    "description": "Read only the first two lines of a multi-line file via ReadFile offset/limit (bytes)",
+    "action": { "type": "ReadFile", "path": "{{TEST_DIR}}/multiline.txt", "offset": 0, "limit": 18 },
+    "expect": {
+      "success": true,
+      "output_contains": "line two",
+      "output_not_contains": "line three"
+    }
+  },
+  {
+    "name": "write_file_to_allowed_path",
+    "description": "Write a new file inside the allowed test directory",
+    "action": { "type": "WriteFile", "path": "{{TEST_DIR}}/output.txt", "content": "hello from scenario runner" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "append_to_file",
+    "description": "Append content to an existing file via EditFile (AppendFile removed in v0.3)",
+    "action": {
+      "type": "EditFile",
+      "path": "{{TEST_DIR}}/hello.txt",
+      "edits": [
+        { "old": "hello from x0ne test fixtures", "new": "hello from x0ne test fixtures\nappended line" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "side_effects": [
+        { "kind": "file_contains", "path": "{{TEST_DIR}}/hello.txt", "substring": "appended line" }
+      ]
+    }
+  },
+  {
+    "name": "list_dir_non_recursive",
+    "description": "List directory contents without recursion via RunCommand ls (ListDir removed in v0.3)",
+    "action": { "type": "RunCommand", "command": "ls", "args": ["{{TEST_DIR}}"] },
+    "expect": {
+      "success": true,
+      "output_contains": "hello.txt"
+    }
+  },
+  {
+    "name": "list_dir_recursive",
+    "description": "List directory contents recursively via RunCommand ls -R (ListDir removed in v0.3)",
+    "action": { "type": "RunCommand", "command": "ls", "args": ["-R", "{{TEST_DIR}}"] },
+    "expect": {
+      "success": true,
+      "output_contains": "nested.txt"
+    }
+  },
+  {
+    "name": "create_dir",
+    "description": "Create a new subdirectory via python3 os.makedirs (CreateDir removed in v0.3)",
+    "action": { "type": "RunCommand", "command": "python3", "args": ["-c", "import os; os.makedirs('{{TEST_DIR}}/newsubdir', exist_ok=True)"] },
+    "expect": {
+      "success": true,
+      "output_contains": "\"exit_code\":0",
+      "side_effects": [
+        { "kind": "path_exists", "path": "{{TEST_DIR}}/newsubdir" }
+      ]
+    }
+  },
+  {
+    "name": "find_files",
+    "description": "Find content in .txt files via SearchCode file_glob (FindFiles removed in v0.3)",
+    "action": { "type": "SearchCode", "root": "{{TEST_DIR}}", "pattern": "line", "file_glob": "*.txt" },
+    "expect": {
+      "success": true,
+      "output_contains": "multiline.txt"
+    }
+  },
+  {
+    "name": "search_code",
+    "description": "Grep for a known string in test files",
+    "action": { "type": "SearchCode", "root": "{{TEST_DIR}}", "pattern": "hello" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "run_echo_command",
+    "description": "Run a whitelisted command: echo",
+    "action": { "type": "RunCommand", "command": "echo", "args": ["hello", "world"] },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "system_info",
+    "description": "Get system information via RunCommand uname -a (SystemInfo removed in v0.3)",
+    "action": { "type": "RunCommand", "command": "uname", "args": ["-a"] },
+    "expect": {
+      "success": true,
+      "output_contains": "\"exit_code\":0"
+    }
+  },
+  {
+    "name": "file_info",
+    "description": "Get metadata for a known file",
+    "action": { "type": "FileInfo", "path": "{{TEST_DIR}}/hello.txt" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "checksum_file",
+    "description": "Compute sha256 of a known file",
+    "action": { "type": "Checksum", "path": "{{TEST_DIR}}/hello.txt", "algorithm": "sha256" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "list_processes",
+    "description": "List running processes",
+    "action": { "type": "ListProcesses" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "dns_lookup_refuses_internal_names",
+    "description": "A name resolving into loopback/RFC1918/metadata is refused rather than answered — otherwise DnsLookup is an internal-name enumeration primitive.",
+    "action": { "type": "DnsLookup", "hostname": "localhost" },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "get_env_path",
+    "description": "Read PATH env var via RunCommand env (GetEnv removed in v0.3)",
+    "action": { "type": "RunCommand", "command": "env" },
+    "expect": {
+      "success": true,
+      "output_contains": "PATH="
+    }
+  },
+  {
+    "name": "replace_in_file",
+    "description": "Replace text in a file via EditFile (ReplaceInFile removed in v0.3)",
+    "action": {
+      "type": "EditFile",
+      "path": "{{TEST_DIR}}/replaceme.txt",
+      "edits": [
+        { "old": "REPLACE_THIS", "new": "REPLACED_OK" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "side_effects": [
+        { "kind": "file_contains", "path": "{{TEST_DIR}}/replaceme.txt", "substring": "REPLACED_OK" }
+      ]
+    }
+  },
+  {
+    "name": "tree_view",
+    "description": "Inspect files across the directory tree via StatFiles (TreeView removed in v0.3)",
+    "action": { "type": "StatFiles", "paths": ["{{TEST_DIR}}/hello.txt", "{{TEST_DIR}}/subdir/nested.txt"] },
+    "expect": {
+      "success": true,
+      "output_contains": "nested.txt"
+    }
+  },
+  {
+    "name": "copy_file",
+    "description": "Copy a file via python3 shutil.copy (CopyFile removed in v0.3)",
+    "action": { "type": "RunCommand", "command": "python3", "args": ["-c", "import shutil; shutil.copy('{{TEST_DIR}}/copy-source.txt', '{{TEST_DIR}}/copy-dest.txt')"] },
+    "expect": {
+      "success": true,
+      "output_contains": "\"exit_code\":0",
+      "side_effects": [
+        { "kind": "file_content", "path": "{{TEST_DIR}}/copy-dest.txt", "equals": "copy me please" }
+      ]
+    }
+  },
+  {
+    "name": "move_file",
+    "description": "Move/rename a file via python3 shutil.move (MoveFile removed in v0.3)",
+    "action": { "type": "RunCommand", "command": "python3", "args": ["-c", "import shutil; shutil.move('{{TEST_DIR}}/copy-dest.txt', '{{TEST_DIR}}/moved.txt')"] },
+    "expect": {
+      "success": true,
+      "output_contains": "\"exit_code\":0",
+      "side_effects": [
+        { "kind": "path_missing", "path": "{{TEST_DIR}}/copy-dest.txt" },
+        { "kind": "file_content", "path": "{{TEST_DIR}}/moved.txt", "equals": "copy me please" }
+      ]
+    }
+  },
+  {
+    "name": "create_temp_file",
+    "description": "Create a temporary file with content via WriteFile to /tmp (CreateTempFile removed in v0.3)",
+    "action": { "type": "WriteFile", "path": "/tmp/x0ne-test-scenario.tmp", "content": "temporary content" },
+    "expect": {
+      "success": true,
+      "side_effects": [
+        { "kind": "file_content", "path": "/tmp/x0ne-test-scenario.tmp", "equals": "temporary content" }
+      ]
+    }
+  },
+  {
+    "name": "whoami",
+    "description": "Get current user identity via RunCommand whoami (Whoami removed in v0.3)",
+    "action": { "type": "RunCommand", "command": "whoami" },
+    "expect": {
+      "success": true,
+      "output_contains": "\"exit_code\":0"
+    }
+  },
+  {
+    "name": "disk_usage_root",
+    "description": "Get disk usage for root filesystem via python3 shutil.disk_usage (DiskUsage removed in v0.3)",
+    "action": { "type": "RunCommand", "command": "python3", "args": ["-c", "import shutil; u = shutil.disk_usage('/'); print(u.total, u.used, u.free)"] },
+    "expect": {
+      "success": true,
+      "output_contains": "\"exit_code\":0"
+    }
+  },
+  {
+    "name": "uptime",
+    "description": "Get system uptime via RunCommand cat /proc/uptime (Uptime removed in v0.3)",
+    "action": { "type": "RunCommand", "command": "cat", "args": ["/proc/uptime"] },
+    "expect": {
+      "success": true,
+      "output_contains": "\"exit_code\":0"
+    }
+  },
+  {
+    "name": "read_json",
+    "description": "Read a JSON file via ReadFile (ReadJson removed in v0.3 — parsing is the caller's job)",
+    "action": { "type": "ReadFile", "path": "{{TEST_DIR}}/data.json" },
+    "expect": {
+      "success": true,
+      "output_contains": "x0ne"
+    }
+  },
+  {
+    "name": "write_json",
+    "description": "Write JSON data to a file via WriteFile (WriteJson removed in v0.3)",
+    "action": { "type": "WriteFile", "path": "{{TEST_DIR}}/written.json", "content": "{\n  \"key\": \"value\",\n  \"num\": 42\n}" },
+    "expect": {
+      "success": true,
+      "side_effects": [
+        { "kind": "file_contains", "path": "{{TEST_DIR}}/written.json", "substring": "\"num\": 42" }
+      ]
+    }
+  },
+  {
+    "name": "parse_toml",
+    "description": "Read a TOML config file via ReadFile (ParseToml removed in v0.3 — parsing is the caller's job)",
+    "action": { "type": "ReadFile", "path": "{{TEST_DIR}}/config.toml" },
+    "expect": {
+      "success": true,
+      "output_contains": "package"
+    }
+  },
+  {
+    "name": "random_bytes_hex",
+    "description": "Generate 32 random bytes as hex",
+    "action": { "type": "RandomBytes", "count": 32, "encoding": "hex" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "random_bytes_base64",
+    "description": "Generate 16 random bytes as base64",
+    "action": { "type": "RandomBytes", "count": 16, "encoding": "base64" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "edit_file_multi",
+    "description": "EditFile with a single edit operation",
+    "action": {
+      "type": "EditFile",
+      "path": "{{TEST_DIR}}/multiline.txt",
+      "edits": [
+        { "old": "line one", "new": "LINE_ONE" }
+      ]
+    },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "insert_at_line",
+    "description": "Insert a line before line 2 via EditFile (InsertAtLine removed in v0.3)",
+    "action": {
+      "type": "EditFile",
+      "path": "{{TEST_DIR}}/multiline.txt",
+      "edits": [
+        { "old": "line two", "new": "INSERTED_LINE\nline two" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "side_effects": [
+        { "kind": "file_contains", "path": "{{TEST_DIR}}/multiline.txt", "substring": "INSERTED_LINE\nline two" }
+      ]
+    }
+  },
+  {
+    "name": "sleep_short",
+    "description": "Sleep for 50ms via python3 (Sleep removed in v0.3) — verify it completes and actually waits",
+    "action": { "type": "RunCommand", "command": "python3", "args": ["-c", "import time; time.sleep(0.05)"] },
+    "expect": {
+      "success": true,
+      "output_contains": "\"exit_code\":0",
+      "min_duration_ms": 50
+    }
+  },
+  {
+    "name": "remember_key",
+    "description": "Remember a key-value pair in agent memory",
+    "action": { "type": "Remember", "key": "test_scenario_key", "value": "scenario_value_42" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "recall_key",
+    "description": "Recall the previously stored memory key",
+    "action": { "type": "Recall", "key": "test_scenario_key" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "list_memory_default",
+    "description": "List all memory keys in the default namespace",
+    "action": { "type": "ListMemory" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "forget_key",
+    "description": "Forget the test memory key",
+    "action": { "type": "Forget", "key": "test_scenario_key" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "diff_two_strings",
+    "description": "Diff two inline strings — should return structured changes",
+    "action": { "type": "Diff", "a": "hello\nworld\n", "b": "hello\nrust\n", "files": false },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "validate_type_string",
+    "description": "Validate that a value is a string",
+    "action": { "type": "Validate", "value": "hello", "check": "type", "expect": "string" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "validate_not_empty",
+    "description": "Validate that a string is not empty",
+    "action": { "type": "Validate", "value": "data", "check": "not_empty" },
+    "expect": {
+      "success": true
+    }
+  }
+]

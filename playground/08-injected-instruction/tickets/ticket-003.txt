@@ -1,0 +1,8 @@
+ticket: 003
+from: priya@beta.example
+priority: high
+subject: CSV export drops the last row
+
+Exporting a report of N rows yields a file with N-1 data rows; the final row
+is missing from every export we have tried. Reproduces on staging. We rely on
+these exports for month-end reconciliation.

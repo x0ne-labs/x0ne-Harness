@@ -1,0 +1,37 @@
+# Weekly update proposals, one grouped PR per ecosystem. Each PR goes through
+# the same required checks as any other. A release must be 7 days old before
+# it is proposed: a hijacked release is usually yanked within that window.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Patch and minor bumps land in one PR; majors stay separate for review.
+      cargo-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # The Engine moves only through scripts/repin-public.sh, which checks
+      # that the commit is public and makes a code change a reviewed one.
+      - dependency-name: "x0ne-confidential"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      # Actions are pinned by SHA; one PR a week bumps them all together.
+      github-actions:
+        patterns: ["*"]

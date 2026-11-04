@@ -1,0 +1,289 @@
+#!/usr/bin/env bash
+# x0ne-vm — a friendly CLI wrapper around x0ne-vm-mcp.
+#
+# Instead of:
+#   echo '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+#          "params":{"name":"vm_click","arguments":{"name":"x0ne-firefox","x":460,"y":590}}}' \
+#     | x0ne-vm-mcp
+#
+# you can just write:
+#   x0ne-vm click 460 590
+#
+# The current target VM is the first running VM, or override with $X0NE_VM.
+
+set -uo pipefail
+
+MCP_BIN="${X0NE_VM_MCP:-${CARGO_TARGET_DIR:-$(pwd)/target}/release/x0ne-vm-mcp}"
+if [[ ! -x "$MCP_BIN" ]]; then
+    MCP_BIN=$(command -v x0ne-vm-mcp 2>/dev/null || true)
+fi
+[[ -x "$MCP_BIN" ]] || { echo "x0ne-vm: x0ne-vm-mcp not found; build it (cargo build -p x0ne-vm --release) or set X0NE_VM_MCP=path"; exit 1; }
+
+# Auto-detect target VM: first running, or fall back to $X0NE_VM env, or fail.
+target_vm() {
+    if [[ -n "${X0NE_VM:-}" ]]; then echo "$X0NE_VM"; return 0; fi
+    local v
+    v=$(virsh -c qemu:///session list --state-running --name 2>/dev/null | grep -v '^$' | head -1)
+    if [[ -z "$v" ]]; then
+        echo "x0ne-vm: no running VM and no \$X0NE_VM set" >&2
+        return 1
+    fi
+    echo "$v"
+}
+
+# Send a single JSON-RPC request, return stdout from MCP.
+mcp() {
+    local method=$1 params=${2:-'{}'}
+    printf '{"jsonrpc":"2.0","id":%d,"method":"%s","params":%s}\n' "$RANDOM" "$method" "$params" \
+      | "$MCP_BIN" 2>/dev/null
+}
+
+mcp_tool() {
+    local name=$1 args=${2:-'{}'}
+    mcp 'tools/call' "{\"name\":\"${name}\",\"arguments\":${args}}"
+}
+
+extract_text() {
+    python3 -c "
+import json,sys
+d=json.loads(sys.stdin.read())
+content=d.get('result',{}).get('content',[])
+for c in content:
+    if c.get('type')=='text': print(c.get('text',''))
+"
+}
+
+extract_image() {
+    local target=$1
+    TARGET="$target" python3 -c "
+import json,sys,os,base64
+d=json.loads(sys.stdin.read())
+content=d.get('result',{}).get('content',[]) or []
+img=next((c for c in content if c.get('type')=='image'),None)
+if not img: sys.exit(2)
+data=base64.b64decode(img['data'])
+open(os.environ['TARGET'],'wb').write(data)
+print(len(data))
+"
+}
+
+usage() {
+    cat <<'EOF_USAGE'
+x0ne-vm — friendly wrapper around x0ne-vm-mcp
+
+  Target VM is the first running, or $X0NE_VM. Override per-call with -v <name>.
+
+USAGE
+  x0ne-vm                                  show this help + active VM
+  x0ne-vm vms                              list all VMs and their state
+  x0ne-vm info [<vm>]                      detailed info on a VM
+  x0ne-vm start <vm>                       boot a VM
+  x0ne-vm stop  <vm>                       ACPI shutdown
+  x0ne-vm kill  <vm>                       hard power-off
+
+  x0ne-vm shot [<file>]                    screenshot → /tmp/x0ne-vm-last.png (default), xdg-open it
+  x0ne-vm shot -                           screenshot to stdout (PNG bytes)
+  x0ne-vm cursor                           print last-known cursor (x, y)
+
+  x0ne-vm click <x> <y> [left|right|middle]
+  x0ne-vm dclick <x> <y>                   double click
+  x0ne-vm tclick <x> <y>                   triple click
+  x0ne-vm move  <x> <y>
+  x0ne-vm drag  <x1> <y1> <x2> <y2>
+  x0ne-vm scroll up|down [N]               default N=3
+  x0ne-vm key   <chord>                    e.g. return, ctrl+l, shift+f10
+  x0ne-vm type  "<text>"
+  x0ne-vm wait  <ms>
+
+  x0ne-vm find  "<text>" [occurrence]      OCR: bbox + center coords (no click)
+  x0ne-vm click-text "<text>" [occurrence] OCR + click center
+  x0ne-vm wait-text  "<text>" [timeout_ms] poll OCR until appears
+
+  x0ne-vm snap <name>                      create snapshot
+  x0ne-vm snaps                            list snapshots
+  x0ne-vm restore <name>                   revert to snapshot
+  x0ne-vm delsnap <name>                   delete snapshot
+
+  x0ne-vm shell                            interactive REPL
+  x0ne-vm raw <method> [<json-params>]     send any JSON-RPC method
+
+ENVIRONMENT
+  X0NE_VM         override target VM (default: first running)
+  X0NE_VM_MCP     path to the x0ne-vm-mcp binary
+EOF_USAGE
+}
+
+# ─── command dispatch ──────────────────────────────────────────────────────
+
+# Handle -v <vm> as a global override.
+if [[ "${1:-}" == "-v" || "${1:-}" == "--vm" ]]; then
+    X0NE_VM="$2"; export X0NE_VM
+    shift 2
+fi
+
+cmd=${1:-help}
+shift || true
+
+case "$cmd" in
+help|-h|--help|"")
+    usage
+    if v=$(target_vm 2>/dev/null); then echo; echo "  active VM: $v"; fi
+    ;;
+
+vms)
+    mcp_tool vm_list '{}' | extract_text
+    ;;
+
+info)
+    vm=${1:-$(target_vm)}; mcp_tool vm_info "{\"name\":\"$vm\"}" | extract_text
+    ;;
+
+start)
+    vm=${1:?usage: x0ne-vm start <vm>}; mcp_tool vm_start "{\"name\":\"$vm\"}" | extract_text
+    ;;
+stop)
+    vm=${1:?usage: x0ne-vm stop <vm>};  mcp_tool vm_shutdown "{\"name\":\"$vm\"}" | extract_text
+    ;;
+kill)
+    vm=${1:?usage: x0ne-vm kill <vm>};  mcp_tool vm_force_off "{\"name\":\"$vm\"}" | extract_text
+    ;;
+reboot)
+    vm=${1:?usage: x0ne-vm reboot <vm>}; mcp_tool vm_reboot "{\"name\":\"$vm\"}" | extract_text
+    ;;
+
+shot)
+    vm=$(target_vm) || exit 1
+    out=${1:-/tmp/x0ne-vm-last.png}
+    if [[ "$out" == "-" ]]; then
+        # binary on stdout
+        mcp_tool vm_screenshot "{\"name\":\"$vm\"}" | python3 -c "
+import json,sys,base64
+d=json.loads(sys.stdin.read())
+img=next((c for c in d['result']['content'] if c.get('type')=='image'),None)
+sys.stdout.buffer.write(base64.b64decode(img['data']))
+"
+    else
+        sz=$(mcp_tool vm_screenshot "{\"name\":\"$vm\"}" | extract_image "$out")
+        echo "✓ $sz bytes → $out"
+        command -v xdg-open >/dev/null && xdg-open "$out" >/dev/null 2>&1 &
+    fi
+    ;;
+
+cursor)
+    vm=$(target_vm) || exit 1
+    mcp_tool vm_cursor_position "{\"name\":\"$vm\"}" | extract_text
+    ;;
+
+click)
+    x=${1:?usage: x0ne-vm click <x> <y> [button]}; y=${2:?missing y}
+    btn=${3:-left}
+    vm=$(target_vm) || exit 1
+    mcp_tool vm_click "{\"name\":\"$vm\",\"x\":$x,\"y\":$y,\"button\":\"$btn\"}" | extract_text
+    ;;
+dclick)
+    x=${1:?usage: x0ne-vm dclick <x> <y>}; y=${2:?missing y}
+    vm=$(target_vm) || exit 1
+    mcp_tool vm_click "{\"name\":\"$vm\",\"x\":$x,\"y\":$y,\"double\":true}" | extract_text
+    ;;
+tclick)
+    x=${1:?usage: x0ne-vm tclick <x> <y>}; y=${2:?missing y}
+    vm=$(target_vm) || exit 1
+    mcp_tool vm_triple_click "{\"name\":\"$vm\",\"x\":$x,\"y\":$y}" | extract_text
+    ;;
+move)
+    x=${1:?usage: x0ne-vm move <x> <y>}; y=${2:?missing y}
+    vm=$(target_vm) || exit 1
+    mcp_tool vm_move "{\"name\":\"$vm\",\"x\":$x,\"y\":$y}" | extract_text
+    ;;
+drag)
+    x1=${1:?}; y1=${2:?}; x2=${3:?}; y2=${4:?}
+    vm=$(target_vm) || exit 1
+    mcp_tool vm_drag "{\"name\":\"$vm\",\"x1\":$x1,\"y1\":$y1,\"x2\":$x2,\"y2\":$y2}" | extract_text
+    ;;
+scroll)
+    dir=${1:?usage: x0ne-vm scroll up|down [N]}; n=${2:-3}
+    vm=$(target_vm) || exit 1
+    mcp_tool vm_scroll "{\"name\":\"$vm\",\"direction\":\"$dir\",\"clicks\":$n}" | extract_text
+    ;;
+key)
+    k=${1:?usage: x0ne-vm key <chord>}
+    vm=$(target_vm) || exit 1
+    # Escape any embedded quotes in the chord string.
+    k=${k//\"/\\\"}
+    mcp_tool vm_key "{\"name\":\"$vm\",\"key\":\"$k\"}" | extract_text
+    ;;
+type)
+    t=${1:?usage: x0ne-vm type \"<text>\"}
+    vm=$(target_vm) || exit 1
+    # JSON-encode the text so quotes/backslashes survive.
+    json_t=$(python3 -c "import json,sys;print(json.dumps(sys.argv[1]))" "$t")
+    mcp_tool vm_type "{\"name\":\"$vm\",\"text\":$json_t}" | extract_text
+    ;;
+wait)
+    ms=${1:?usage: x0ne-vm wait <ms>}
+    mcp_tool vm_wait "{\"ms\":$ms}" | extract_text
+    ;;
+
+find)
+    t=${1:?usage: x0ne-vm find \"<text>\" [occurrence]}; occ=${2:-0}
+    vm=$(target_vm) || exit 1
+    json_t=$(python3 -c "import json,sys;print(json.dumps(sys.argv[1]))" "$t")
+    mcp_tool vm_find_text "{\"name\":\"$vm\",\"text\":$json_t,\"occurrence\":$occ}" | extract_text
+    ;;
+click-text|clicktext)
+    t=${1:?usage: x0ne-vm click-text \"<text>\" [occurrence]}; occ=${2:-0}
+    vm=$(target_vm) || exit 1
+    json_t=$(python3 -c "import json,sys;print(json.dumps(sys.argv[1]))" "$t")
+    mcp_tool vm_click_text "{\"name\":\"$vm\",\"text\":$json_t,\"occurrence\":$occ}" | extract_text
+    ;;
+wait-text|waittext)
+    t=${1:?usage: x0ne-vm wait-text \"<text>\" [timeout_ms]}; to=${2:-10000}
+    vm=$(target_vm) || exit 1
+    json_t=$(python3 -c "import json,sys;print(json.dumps(sys.argv[1]))" "$t")
+    mcp_tool vm_wait_for_text "{\"name\":\"$vm\",\"text\":$json_t,\"timeout_ms\":$to}" | extract_text
+    ;;
+
+snap)
+    name=${1:?usage: x0ne-vm snap <snapshot-name>}
+    vm=$(target_vm) || exit 1
+    mcp_tool vm_snapshot_create "{\"name\":\"$vm\",\"snapshot\":\"$name\"}" | extract_text
+    ;;
+snaps)
+    vm=$(target_vm) || exit 1
+    mcp_tool vm_snapshot_list "{\"name\":\"$vm\"}" | extract_text
+    ;;
+restore)
+    name=${1:?usage: x0ne-vm restore <snapshot-name>}
+    vm=$(target_vm) || exit 1
+    mcp_tool vm_snapshot_restore "{\"name\":\"$vm\",\"snapshot\":\"$name\"}" | extract_text
+    ;;
+delsnap)
+    name=${1:?usage: x0ne-vm delsnap <snapshot-name>}
+    vm=$(target_vm) || exit 1
+    mcp_tool vm_snapshot_delete "{\"name\":\"$vm\",\"snapshot\":\"$name\"}" | extract_text
+    ;;
+
+raw)
+    method=${1:?usage: x0ne-vm raw <method> [<json-params>]}; params=${2:-'{}'}
+    mcp "$method" "$params"
+    ;;
+
+shell)
+    vm=$(target_vm) || exit 1
+    echo "x0ne-vm REPL — VM: $vm   (type 'help', 'exit', or any subcommand)"
+    while IFS= read -r -e -p "x0ne-vm@${vm}> " line; do
+        case "$line" in
+            ""|"#"*) continue ;;
+            exit|quit) break ;;
+            help) usage ;;
+            *) X0NE_VM="$vm" bash "$0" $line ;;
+        esac
+    done
+    echo "bye"
+    ;;
+
+*)
+    echo "x0ne-vm: unknown command '$cmd' — try 'x0ne-vm help'" >&2
+    exit 1
+    ;;
+esac

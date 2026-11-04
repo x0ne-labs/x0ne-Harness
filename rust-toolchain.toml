@@ -1,0 +1,5 @@
+# The compiler of CI and of the release builds (.github/workflows), the same
+# as x0ne-Engine's. The MSRV job reads `rust-version` from Cargo.toml instead.
+[toolchain]
+channel = "1.98.1"
+components = ["clippy", "rustfmt"]

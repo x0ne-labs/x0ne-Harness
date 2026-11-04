@@ -1,0 +1,37 @@
+# Build
+/target
+target/
+**/target/
+dist/
+
+# Rust toolchain (local); .cargo/config.toml holds local [patch] entries
+.cargo/config.toml
+.cargo_home/
+.rustup_home/
+
+# Environment
+.env
+.env.dev
+.env.local
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs & backups
+*.log
+*.bak
+
+# Local configs (may contain private IPs/tokens)
+x0ne-orchestrator.toml
+# The playground carries its own, secret-free (LLM section is overlaid from ~/.x0ne/config.toml).
+!playground/x0ne-orchestrator.toml
+x0ne-core.toml
+

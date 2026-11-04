@@ -1,0 +1,152 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# x0ne-runtime-sandbox.toml — Config for running INSIDE an Incus container
+# Deployed to /root/x0ne-runtime.toml in the container by `make sync-sandbox`
+# ─────────────────────────────────────────────────────────────────────────────
+
+[runtime]
+mode = "stdio"
+
+[policy]
+# Full access inside the sandbox — the container IS the isolation boundary
+default_effect = "allow"
+mode = "auto"
+max_read_bytes = 10485760   # 10 MiB inside sandbox
+max_list_entries = 1000
+allowed_commands = []       # empty = all commands allowed
+# BREAKING (Aug 2026): an EMPTY list now means DENY ALL, not "no restriction".
+# This profile runs inside a container where the container IS the isolation
+# boundary, so the previous intent (unrestricted) is now stated explicitly.
+allowed_read_paths  = ["/"]
+allowed_write_paths = ["/"]
+deny_path_patterns  = []    # no deny patterns of its own
+# The runtime applies the default deny patterns even to an empty list;
+# the container being the boundary, each one is lifted here by name.
+deny_path_exceptions = [
+    "**/.ssh/**",
+    "**/.gnupg/**",
+    "**/id_rsa*",
+    "**/id_ed25519*",
+    "**/*.key",
+    "**/*.pem",
+    "**/secrets/**",
+    "**/.env*",
+    "/proc/**/environ",
+    "**/.x0ne/keys/**",
+    "**/.x0ne/run/**",
+    "/run/user/*/x0ne/**",
+    "**/.x0ne/config.toml",
+    "**/.x0ne/trusted-projects.toml",
+    "**/.x0ne/snapshots/**",
+    "**/.x0ne-secrets/**",
+    "**/.config/x0ne/**",
+    "**/.config/x0ne-orchestrator/**",
+    "**/.claude/.credentials.json",
+    "**/.codex/auth.json",
+    "**/.config/gh/**",
+    "**/.config/hub",
+    "**/.netrc",
+    "**/.git-credentials",
+    "**/.kube/**",
+    "**/.aws/**",
+    "**/.azure/**",
+    "**/.config/gcloud/**",
+    "**/.docker/config.json",
+    "**/.pgpass",
+    "**/.pypirc",
+    "**/.cargo/credentials*",
+    "**/.vault-token",
+    "**/.terraform.d/credentials.tfrc.json",
+    "**/.password-store/**",
+    "**/.local/share/keyrings/**",
+]
+readable_env_vars   = []    # all readable
+
+[actions]
+# ── All read actions ──────────────────────────────────────────────────────────
+ReadFile        = true
+SearchCode      = true
+ReadLogs        = true
+AskHuman        = true
+Confirm         = true
+FileInfo        = true
+Checksum        = true
+ListProcesses   = true
+PortCheck       = true
+DnsLookup       = true
+RandomBytes     = true
+ListSnapshots   = true
+ListActions     = true
+DescribeAction  = true
+PolicyCheck     = true
+CheckHandle     = true
+ListHandles     = true
+ArtifactList      = true
+
+# ── All write actions — open inside sandbox ───────────────────────────────────
+WriteFile       = true
+EditFile        = true
+ApplyPatch      = true
+MoveToTrash     = true
+RunCommand      = true
+RunInSandbox    = false    # no nested containers
+
+# ── Terminals (tmux on a private socket) — no limit beyond the container ─────
+TermOpen        = true
+TermSend        = true
+TermRead        = true
+TermWait        = true
+TermResize      = true
+TermSnapshot    = true
+TermList        = true
+TermClose       = true
+Pipeline        = true
+HttpRequest     = true
+FetchUrl        = true
+CreateSnapshot  = true
+RestoreSnapshot = true
+DeleteSnapshot  = true
+Subscribe       = true
+StopHandle      = true
+ArtifactCreate    = true
+ArtifactServe     = true
+ArtifactSave      = true
+ArtifactStop      = true
+ArtifactDestroy   = true
+
+# ── Desktop — disabled (headless container) ───────────────────────────────────
+Screenshot          = false
+GetWindowTree       = false
+GetFocusedWindow    = false
+MoveMouse           = false
+Click               = false
+DoubleClick         = false
+Scroll              = false
+TypeText            = false
+PressKey            = false
+PressKeyCombination = false
+FocusWindow         = false
+SendNotification    = false
+GetClipboard        = false
+SetClipboard        = false
+
+[snapshots]
+dir = "/root/.x0ne/snapshots"
+max_snapshots = 20
+max_snapshot_size_mb = 200
+
+[handles]
+max_concurrent = 20
+completed_retention_secs = 300
+
+[events]
+max_subscriptions = 20
+max_events_per_handle = 1000
+debounce_ms = 500
+port_check_interval_secs = 2
+port_check_timeout_secs = 300
+
+[system]
+enable_process_list = true
+
+[desktop]
+enabled = false

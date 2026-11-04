@@ -1,0 +1,28 @@
+[package]
+name = "x0ne-subagents"
+version.workspace = true
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Recursive, sandboxed, budget-monotone sub-agent tree: every node runs in its own CoW clone under bubblewrap, capabilities and budget only shrink, results come back verified, journals are hash-chained and written by the orchestrator only. Prototype."
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+glob = { workspace = true }
+walkdir = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+# The workspace's HTTP client (x0ne-orchestrator uses the same), rustls only.
+reqwest = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

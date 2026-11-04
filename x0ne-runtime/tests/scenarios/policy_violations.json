@@ -1,0 +1,315 @@
+[
+  {
+    "name": "write_to_etc_shadow",
+    "description": "Write to /etc/shadow — must be denied by path policy",
+    "action": {
+      "type": "WriteFile",
+      "path": "/etc/shadow",
+      "content": "pwned"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "write_to_etc_passwd",
+    "description": "Write to /etc/passwd — must be denied by path policy",
+    "action": {
+      "type": "WriteFile",
+      "path": "/etc/passwd",
+      "content": "pwned"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "run_rm_rf_slash",
+    "description": "Run rm -rf / — must be denied by command whitelist",
+    "action": {
+      "type": "RunCommand",
+      "command": "rm",
+      "args": [
+        "-rf",
+        "/"
+      ]
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "run_unlisted_command",
+    "description": "Run bash — not in allowed_commands list",
+    "action": {
+      "type": "RunCommand",
+      "command": "bash",
+      "args": [
+        "-c",
+        "whoami"
+      ]
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "run_sh_shell",
+    "description": "Run /bin/sh — no raw shell access",
+    "action": {
+      "type": "RunCommand",
+      "command": "/bin/sh",
+      "args": [
+        "-c",
+        "id"
+      ]
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "read_ssh_private_key",
+    "description": "Read .ssh/id_rsa — matches deny pattern **/.ssh/**",
+    "action": {
+      "type": "ReadFile",
+      "path": "/home/user/.ssh/id_rsa"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "read_gnupg_key",
+    "description": "Read .gnupg key — matches deny pattern",
+    "action": {
+      "type": "ReadFile",
+      "path": "/home/user/.gnupg/secring.gpg"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "read_pem_file",
+    "description": "Read .pem file — matches deny pattern **/*.pem",
+    "action": {
+      "type": "ReadFile",
+      "path": "/tmp/certs/server.pem"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "get_secret_env_var",
+    "description": "Read /proc/self/environ - process env exfiltration must be denied by path policy",
+    "action": {
+      "type": "ReadFile",
+      "path": "/proc/self/environ"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "write_outside_allowed_paths",
+    "description": "Write to path not in allowed_write_paths — must be denied by path policy",
+    "action": {
+      "type": "WriteFile",
+      "path": "/var/log/should_fail.txt",
+      "content": "nope"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "desktop_screenshot_disabled",
+    "description": "Screenshot when desktop.enabled=false — must be denied",
+    "action": {
+      "type": "Screenshot"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "desktop_click_disabled",
+    "description": "Click when desktop.enabled=false — must be denied",
+    "action": {
+      "type": "Click",
+      "x": 100,
+      "y": 200
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "nested_pipeline_forbidden",
+    "description": "Pipeline containing another Pipeline — nesting allowed at policy level, depth enforced at execution time. An empty nested pipeline succeeds.",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        {
+          "type": "Pipeline",
+          "steps": []
+        }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": {
+        "steps_total": 1,
+        "steps_completed": 1,
+        "step_success": [
+          true
+        ]
+      }
+    }
+  },
+  {
+    "name": "pipeline_with_denied_step",
+    "description": "Pipeline where one step uses a forbidden command",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        {
+          "type": "ReadFile",
+          "path": "{{TEST_DIR}}/hello.txt"
+        },
+        {
+          "type": "RunCommand",
+          "command": "rm",
+          "args": [
+            "-rf",
+            "/"
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "sandbox_unknown_image",
+    "description": "RunInSandbox with unknown image — fails (policy_denied if allowlist set, missing_dependency if podman absent)",
+    "action": {
+      "type": "RunInSandbox",
+      "image": "evil:latest",
+      "command": [
+        "id"
+      ]
+    },
+    "expect": {
+      "success": false
+    }
+  },
+  {
+    "name": "copy_file_to_etc",
+    "description": "Plant a file under /etc/cron.d - must be denied by write path policy",
+    "action": {
+      "type": "WriteFile",
+      "path": "/etc/cron.d/pwned",
+      "content": "* * * * * root sh -c 'id'"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "move_file_to_etc",
+    "description": "Edit a file under /etc - must be denied by write path policy",
+    "action": {
+      "type": "EditFile",
+      "path": "/etc/pwned.txt",
+      "edits": [
+        {
+          "old": "a",
+          "new": "b"
+        }
+      ]
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "write_json_to_etc",
+    "description": "Write JSON content into /etc - must be denied by write path policy",
+    "action": {
+      "type": "WriteFile",
+      "path": "/etc/pwned.json",
+      "content": "{\"evil\": true}"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "copy_from_ssh_key",
+    "description": "Batch-read an SSH private key - deny pattern must apply to ReadFiles too",
+    "action": {
+      "type": "ReadFiles",
+      "paths": [
+        "/home/user/.ssh/id_ed25519"
+      ]
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "trash_etc_passwd",
+    "description": "MoveToTrash on /etc/passwd — must be denied by path policy",
+    "action": {
+      "type": "MoveToTrash",
+      "path": "/etc/passwd"
+    },
+    "expect": {
+      "success": false
+    }
+  },
+  {
+    "name": "http_request_cloud_metadata",
+    "description": "HttpRequest to AWS metadata endpoint — SSRF must be blocked",
+    "action": {
+      "type": "HttpRequest",
+      "url": "http://169.254.169.254/latest/meta-data/",
+      "method": "GET"
+    },
+    "expect": {
+      "success": false
+    }
+  },
+  {
+    "name": "read_logs_sensitive_path",
+    "description": "ReadLogs targeting /var/log/auth.log — should be denied or return empty",
+    "action": {
+      "type": "ReadLogs",
+      "path": "/var/log/auth.log"
+    },
+    "expect": {
+      "success": false
+    }
+  }
+]

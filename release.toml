@@ -1,0 +1,9 @@
+# cargo-release configuration (https://github.com/crate-ci/cargo-release).
+# The release steps are in docs/BRANCHING.md; tags are signed by the maintainer.
+allow-branch = ["main", "chore/release-*"]
+shared-version = true
+consolidate-commits = true
+tag-name = "v{{version}}"
+sign-tag = true
+publish = false
+push = false

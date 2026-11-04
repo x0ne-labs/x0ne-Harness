@@ -1,0 +1,132 @@
+[
+ {
+  "reasoning": "I'll look at the work directory first.",
+  "action": {
+   "type": "RunCommand",
+   "command": "ls",
+   "args": [
+    "-la",
+    "/work"
+   ]
+  }
+ },
+ {
+  "reasoning": "Create the crate.",
+  "action": {
+   "type": "RunCommand",
+   "command": "cargo",
+   "args": [
+    "new",
+    "mini-nmap"
+   ],
+   "cwd": "/work"
+  }
+ },
+ {
+  "reasoning": "",
+  "action": {
+   "type": "ReadFile",
+   "path": "/work/mini-nmap/Cargo.toml"
+  }
+ },
+ {
+  "reasoning": "",
+  "action": {
+   "type": "ReadFile",
+   "path": "/work/mini-nmap/src/main.rs"
+  }
+ },
+ {
+  "reasoning": "Writing the scanner.",
+  "action": {
+   "type": "WriteFile",
+   "path": "/work/mini-nmap/src/main.rs",
+   "content": "use std::net::{SocketAddr, TcpStream, ToSocketAddrs};\nuse std::time::Duration;\n\n/// Parse \"80\", \"8000-8100\" or \"22,80,443\" into a port list.\npub fn parse_ports(spec: &str) -> Result<Vec<u16>, String> {\n    let mut out = Vec::new();\n    for part in spec.split(',') {\n        let part = part.trim();\n        if let Some((a, b)) = part.split_once('-') {\n            let a: u16 = a.parse().map_err(|_| format!(\"bad port: {a}\"))?;\n            let b: u16 = b.parse().map_err(|_| format!(\"bad port: {b}\"))?;\n            if a > b {\n                return Err(format!(\"empty range: {part}\"));\n            }\n            out.extend(a..=b);\n        } else {\n            out.push(part.parse().map_err(|_| format!(\"bad port: {part}\"))?);\n        }\n    }\n    Ok(out)\n}\n\npub fn scan(host: &str, ports: &[u16], timeout: Duration) -> Vec<(u16, bool)> {\n    ports\n        .iter()\n        .map(|&p| {\n            let open = format!(\"{host}:{p}\")\n                .to_socket_addrs()\n                .ok()\n                .and_then(|mut a| a.next())\n                .map(|addr: SocketAddr| TcpStream::connect_timeout(&addr, timeout).is_ok())\n                .unwrap_or(false);\n            (p, open)\n        })\n        .collect()\n}\n\nfn main() {\n    let args: Vec<String> = std::env::args().collect();\n    if args.len() < 3 {\n        eprintln!(\"usage: mini-nmap <host> <ports>\");\n        std::process::exit(2);\n    }\n    let ports = match parse_ports(&args[2]) {\n        Ok(p) => p,\n        Err(e) => {\n            eprintln!(\"{e}\");\n            std::process::exit(2);\n        }\n    };\n    for (p, open) in scan(&args[1], &ports, Duration::from_millis(200)) {\n        if open {\n            println!(\"{p}/tcp OPEN\");\n        }\n    }\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n    #[test]\n    fn single() { assert_eq!(parse_ports(\"80\").unwrap(), vec![80]); }\n    #[test]\n    fn range() { assert_eq!(parse_ports(\"8-10\").unwrap(), vec![8, 9, 10]); }\n    #[test]\n    fn list() { assert_eq!(parse_ports(\"22, 80\").unwrap(), vec![22, 80]); }\n    #[test]\n    fn bad() { assert!(parse_ports(\"x\").is_err()); }\n}\n"
+  }
+ },
+ {
+  "reasoning": "Build it.",
+  "action": {
+   "type": "RunCommand",
+   "command": "cargo",
+   "args": [
+    "build",
+    "--release"
+   ],
+   "cwd": "/work/mini-nmap"
+  }
+ },
+ {
+  "reasoning": "Run the tests.",
+  "action": {
+   "type": "RunCommand",
+   "command": "cargo",
+   "args": [
+    "test"
+   ],
+   "cwd": "/work/mini-nmap"
+  }
+ },
+ {
+  "reasoning": "Start a server to scan.",
+  "action": {
+   "type": "RunCommand",
+   "command": "sh",
+   "args": [
+    "-c",
+    "python3 -m http.server 8080 >/dev/null 2>&1 & sleep 1; echo started"
+   ],
+   "cwd": "/work"
+  }
+ },
+ {
+  "reasoning": "Scan.",
+  "action": {
+   "type": "RunCommand",
+   "command": "/work/mini-nmap/target/release/mini-nmap",
+   "args": [
+    "127.0.0.1",
+    "8070-8090"
+   ]
+  }
+ },
+ {
+  "reasoning": "",
+  "action": {
+   "type": "ReadFile",
+   "path": "/work/mini-nmap/src/main.rs"
+  }
+ },
+ {
+  "reasoning": "Document it.",
+  "action": {
+   "type": "WriteFile",
+   "path": "/work/mini-nmap/README.md",
+   "content": "# mini-nmap\n\nTCP connect scanner.\n\n    mini-nmap 127.0.0.1 8000-8100\n\nPrints each open port as `<port>/tcp OPEN`.\n"
+  }
+ },
+ {
+  "reasoning": "Final check.",
+  "action": {
+   "type": "RunCommand",
+   "command": "cargo",
+   "args": [
+    "test",
+    "--release"
+   ],
+   "cwd": "/work/mini-nmap"
+  }
+ },
+ {
+  "reasoning": "",
+  "action": {
+   "type": "RunCommand",
+   "command": "ls",
+   "args": [
+    "-la",
+    "/work/mini-nmap",
+    "/work/mini-nmap/target/release"
+   ]
+  }
+ }
+]

@@ -1,0 +1,146 @@
+[
+  {
+    "name": "try_succeeds_when_all_steps_pass",
+    "description": "Happy path: 3 file ops succeed, ok=true, rolled_back=false, snapshot deleted on success",
+    "action": {
+      "type": "Try",
+      "label": "happy_try",
+      "actions": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/try_a.txt", "content": "one" },
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/try_b.txt", "content": "two" },
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/try_c.txt", "content": "three" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "output_kind": "try_result",
+      "try_block": { "ok": true, "completed": 3, "total": 3, "rolled_back": false },
+      "side_effects": [
+        { "kind": "file_content", "path": "{{TEST_DIR}}/try_a.txt", "equals": "one" },
+        { "kind": "file_content", "path": "{{TEST_DIR}}/try_b.txt", "equals": "two" },
+        { "kind": "file_content", "path": "{{TEST_DIR}}/try_c.txt", "equals": "three" }
+      ]
+    }
+  },
+
+  {
+    "name": "try_rolls_back_on_failure_restoring_original_content",
+    "description": "Critical safety guarantee: if a step fails after a write, the original file is restored",
+    "action": {
+      "type": "Try",
+      "label": "rollback_test",
+      "rollback_on_fail": true,
+      "actions": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/hello.txt", "content": "TAMPERED-CONTENT" },
+        { "type": "ReadFile",  "path": "/tmp/x0ne-try-does-not-exist-rollback.txt" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "output_kind": "try_result",
+      "try_block": { "ok": false, "completed": 1, "total": 2, "rolled_back": true },
+      "side_effects": [
+        { "kind": "file_content", "path": "{{TEST_DIR}}/hello.txt", "equals": "hello from x0ne test fixtures" }
+      ]
+    }
+  },
+
+  {
+    "name": "try_does_not_rollback_when_disabled",
+    "description": "rollback_on_fail=false must leave the partial side-effects in place after a failure",
+    "action": {
+      "type": "Try",
+      "label": "no_rollback",
+      "rollback_on_fail": false,
+      "actions": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/replaceme.txt", "content": "MUTATED-NO-ROLLBACK" },
+        { "type": "ReadFile",  "path": "/tmp/x0ne-try-does-not-exist-norb.txt" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "try_block": { "ok": false, "completed": 1, "total": 2, "rolled_back": false },
+      "side_effects": [
+        { "kind": "file_content", "path": "{{TEST_DIR}}/replaceme.txt", "equals": "MUTATED-NO-ROLLBACK" }
+      ]
+    }
+  },
+
+  {
+    "name": "try_stops_at_first_failure",
+    "description": "Try is sequential — step 3 must NOT execute when step 2 fails",
+    "action": {
+      "type": "Try",
+      "rollback_on_fail": false,
+      "label": "stop_at_first_failure",
+      "actions": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/stop_a.txt", "content": "step0" },
+        { "type": "ReadFile",  "path": "/tmp/x0ne-try-stop-mid.txt" },
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/stop_c.txt", "content": "should-not-be-written" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "try_block": { "ok": false, "completed": 1, "total": 3 },
+      "side_effects": [
+        { "kind": "path_exists",  "path": "{{TEST_DIR}}/stop_a.txt" },
+        { "kind": "path_missing", "path": "{{TEST_DIR}}/stop_c.txt" }
+      ]
+    }
+  },
+
+  {
+    "name": "try_keeps_snapshot_when_keep_snapshot_true",
+    "description": "keep_snapshot=true must leave the snapshot dir on disk even after a successful Try",
+    "action": {
+      "type": "Try",
+      "label": "keep_snap_test",
+      "keep_snapshot": true,
+      "actions": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/multiline.txt", "content": "modified" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "try_block": { "ok": true, "completed": 1, "total": 1, "snapshot_present": true },
+      "side_effects": [
+        { "kind": "file_content", "path": "{{TEST_DIR}}/multiline.txt", "equals": "modified" }
+      ]
+    }
+  },
+
+  {
+    "name": "try_with_no_writes_executes_without_snapshot",
+    "description": "When a Try contains only read/inspect actions, no snapshot is created",
+    "action": {
+      "type": "Try",
+      "actions": [
+        { "type": "ReadFile", "path": "{{TEST_DIR}}/hello.txt" },
+        { "type": "FileInfo", "path": "{{TEST_DIR}}/hello.txt" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "try_block": { "ok": true, "completed": 2, "total": 2, "rolled_back": false, "snapshot_present": false }
+    }
+  },
+
+  {
+    "name": "try_returns_per_step_results",
+    "description": "TryResult.results must contain one StepResult per executed step with proper action_type",
+    "action": {
+      "type": "Try",
+      "label": "per_step_results",
+      "actions": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/per_step.txt", "content": "abc" },
+        { "type": "ReadFile",  "path": "{{TEST_DIR}}/per_step.txt" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "try_block": { "ok": true, "completed": 2, "total": 2 },
+      "output_contains": "WriteFile",
+      "output_not_contains": "policy_denied"
+    }
+  }
+]

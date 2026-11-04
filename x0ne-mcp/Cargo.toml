@@ -1,0 +1,25 @@
+[package]
+name = "x0ne-mcp"
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Shared MCP / JSON-RPC plumbing used by x0ne-runtime and x0ne-orchestrator. Provides the wire-level types, stdio transport and HTTP client — the tool registry and dispatch live in the consuming crates."
+
+[dependencies]
+serde            = { workspace = true }
+serde_json       = { workspace = true }
+anyhow           = { workspace = true }
+tracing          = { workspace = true }
+tokio            = { workspace = true }
+reqwest          = { workspace = true }
+
+[dev-dependencies]
+# kept for future tests
+
+
+[lints]
+workspace = true

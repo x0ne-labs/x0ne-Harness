@@ -1,0 +1,160 @@
+# x0ne-runtime policy for the PLAYGROUND, and only it.
+#
+# Handed to the runtime by `playground/x0ne-orchestrator.toml`
+# (`[bridge] runtime_config`), so it is in force only when X0NE is started
+# from this directory AND your own config lists it under
+# `[project_trust] privileged` (see `x0ne-orchestrator.toml` next door):
+#
+#     cd playground && x0ne          # or: x0ne --tui, then /playground
+#
+# What it says: read and write anywhere under this directory, run the
+# developer tools the exercises need — and NOTHING beyond. `.` is this
+# directory (the runtime canonicalises roots against its working directory).
+# The runtime does not ask anyone; the human gate is the orchestrator's, and
+# `x0ne-orchestrator.toml` next door dispenses it inside `.` (`[trust]`).
+#
+# Not a template for anything else. A shell (`sh`, `bash`) is deliberately not
+# in the list: a granted shell is a shell for the session, and
+# exercise 14 grades exactly that.
+
+[server]
+mode = "stdio"
+
+[policy]
+mode = "auto"
+default_effect = "allow"
+max_read_bytes = 1048576
+max_list_entries = 512
+
+allowed_read_paths = ["."]
+allowed_write_paths = [".", "/tmp"]
+
+# Exercise `check.sh` scripts run as `./check.sh` from their directory
+# (`cwd`), so both spellings are listed.
+allowed_commands = [
+    "./check.sh", "check.sh",
+    # The exercises' own fixtures a task asks to run (05, 11).
+    "./suite.sh", "suite.sh", "./flood.sh", "flood.sh",
+    "cargo", "rustc",
+    "python3", "python",
+    "git",
+    "ls", "find", "cat", "head", "tail", "wc", "grep", "sort", "uniq", "diff", "file", "stat",
+    "echo", "true", "false", "pwd", "which", "env",
+    "curl",
+    "ss",
+]
+
+# The secrets of the host stay out of reach even from inside the playground.
+deny_path_patterns = [
+    "**/.ssh/**", "**/.gnupg/**", "**/id_rsa*", "**/id_ed25519*",
+    "**/*.pem", "**/*.key", "**/.env", "**/secrets/**", "**/.aws/**",
+    "/proc/*/environ",
+    # Exercise 13 needs a part of its tree OUT of policy, so the per-entry
+    # refusal of PreviewProgram has something to refuse (its check.sh exits 2
+    # otherwise). Exercise 10 relies on `**/secrets/**` above the same way.
+    "**/13-prove-before-acting/vendor/**",
+]
+
+readable_env_vars = []
+
+[actions]
+# Every action is listed, on purpose: the runtime's compiled defaults leave the
+# writing actions OFF (fail-closed), so a partial table would silently keep
+# them off — the config-level dead scaffold docs/invariants.md warns about. On: what
+# the exercises use. Off: everything that leaves the machine, drives the
+# desktop, or talks to a model/cloud from inside the runtime. Snapshot restore
+# and delete are on here (the runtime is not the gate) and always asked by the
+# orchestrator (invariant 7), trust or not.
+ReadFile = true
+ReadFiles = true
+WriteFile = true
+EditFile = true
+ApplyPatch = true
+StatFiles = true
+PatchSet = true
+SearchAndRead = true
+SafeTest = true
+MoveToTrash = true
+SearchCode = true
+RunCommand = true
+ReadLogs = true
+AskHuman = true
+Confirm = true
+AskMultipleChoice = true
+Pipeline = true
+Try = true
+SafeChange = true
+If = true
+RenderTemplate = true
+Assert = true
+CreateSnapshot = true
+RestoreSnapshot = true
+ListSnapshots = true
+DeleteSnapshot = true
+Subscribe = true
+CheckHandle = true
+StopHandle = true
+ListHandles = true
+SendInput = true
+WatchAndReact = true
+PolicyCheck = true
+FileInfo = true
+Checksum = true
+ListProcesses = true
+PortCheck = true
+DnsLookup = true
+Remember = true
+Recall = true
+Forget = true
+ListMemory = true
+Diff = true
+Simulate = true
+Validate = true
+RandomBytes = true
+SendNotification = true
+DefinePrimitive = true
+CallPrimitive = true
+ListCustomPrimitives = true
+DeletePrimitive = true
+DefineFunction = true
+CallFunction = true
+ListFunctions = true
+DeleteFunction = true
+PreviewProgram = true
+RunProgram = true
+ListActions = true
+DescribeAction = true
+PaintBadge = true
+
+FetchUrl = false
+WebSearch = false
+HttpRequest = false
+SshExec = false
+CloudCost = false
+GpuStatus = false
+RunInSandbox = false
+RunContainerGroup = false
+Screenshot = false
+GetWindowTree = false
+GetFocusedWindow = false
+MoveMouse = false
+Click = false
+DoubleClick = false
+Scroll = false
+TypeText = false
+PressKey = false
+PressKeyCombination = false
+FocusWindow = false
+GetClipboard = false
+SetClipboard = false
+LlmCall = false
+OllamaApi = false
+DatasetGenerate = false
+DocumentExtract = false
+OllamaChat = false
+ArtifactCreate = false
+ArtifactList = false
+ArtifactServe = false
+ArtifactSave = false
+ArtifactStop = false
+ArtifactDestroy = false

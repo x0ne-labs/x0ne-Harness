@@ -1,0 +1,23 @@
+# Citation metadata (https://citation-file-format.github.io/).
+# The author below is the copyright holder named in LICENSE.
+cff-version: 1.2.0
+message: "If you use this software in research, please cite it as below."
+type: software
+title: "x0ne-Harness"
+abstract: >-
+  Safety harness for coding agents, in Rust: typed actions, a policy on every
+  call, snapshots to undo, a journal of the agent's actions. Agent commands
+  run under bubblewrap by default (read-only root, writes only in the allowed
+  paths, no network). The runtime, the orchestrator and the MCP server are
+  the three binaries that make install builds.
+authors:
+  - name: "x0ne"
+version: "0.2.0"
+license: Apache-2.0
+repository-code: "https://github.com/x0ne-labs/x0ne-Harness"
+keywords:
+  - sandbox
+  - coding-agents
+  - bubblewrap
+  - mcp
+  - rust

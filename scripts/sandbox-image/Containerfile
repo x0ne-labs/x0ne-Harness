@@ -1,0 +1,6 @@
+# Tooled sandbox for run-podman. Build: make sandbox-image-podman
+# Base: debian trixie-slim, pinned by digest (glibc 2.41).
+FROM docker.io/library/debian@sha256:7792b1f7702a86946cd518db72b6a407302c3e9bc1635634368b878189e8221c
+COPY provision.sh /tmp/provision.sh
+RUN sh /tmp/provision.sh && rm /tmp/provision.sh
+ENV RUSTUP_HOME=/usr/local/rustup PATH=/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin

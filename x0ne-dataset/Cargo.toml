@@ -1,0 +1,25 @@
+[package]
+name = "x0ne-dataset"
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "X0NE trajectory dataset + RAG (TF-IDF / Ollama embeddings) — lib used by both runtime bins (build/index/query) and orchestrator MCP tools (x0ne_recipe)"
+authors = ["x0ne"]
+keywords = ["ai", "agent", "rag", "dataset"]
+categories = ["text-processing"]
+
+[lib]
+name = "x0ne_dataset"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+dirs.workspace = true
+
+[lints]
+workspace = true

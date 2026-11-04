@@ -1,0 +1,24 @@
+[package]
+name = "x0ne-audit"
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Tamper-evident session journals: secret masking, a SHA-256 hash chain over every JSONL line, an optional ed25519-signed chain head, and the verifier behind `x0ne audit verify`."
+
+[lints]
+workspace = true
+
+[dependencies]
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+dirs = { workspace = true }
+chrono = { workspace = true }
+# ed25519 for the chain head. Already in the lock through rustls; no new crate.
+ring = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

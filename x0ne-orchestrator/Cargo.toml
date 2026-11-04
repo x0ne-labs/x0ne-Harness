@@ -1,0 +1,123 @@
+[package]
+name = "x0ne-orchestrator"
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "X0NE Orchestrator:  Matrix llm rendering agent loop connecting LLMs to X0NE Core"
+authors = ["x0ne"]
+readme = "README.md"
+# Build script bakes X0NE_BUILD_STAMP into the binary so tui can
+# display a discreet date/time/git-rev signature in the header.
+build = "build.rs"
+
+[lib]
+name = "x0ne_orchestrator"
+path = "src/lib.rs"
+
+[[bin]]
+name = "x0ne-orchestrator"
+path = "src/main.rs"
+
+[dependencies]
+agent-client-protocol.workspace = true
+# Sibling crates
+x0ne-actions = { path = "../x0ne-actions" }
+x0ne-audit = { path = "../x0ne-audit" }
+# Pure crate (parser, emitter, reader): no policy, no engine, no executor.
+# Its own `the_crate_stays_pure` test keeps it that way. The orchestrator
+# still never links x0ne-runtime (dev-dependency only, see below).
+x0ne-asm     = { path = "../x0ne-asm" }
+x0ne-cloud = { path = "../x0ne-cloud" }
+x0ne-confidential.workspace = true
+x0ne-mcp     = { path = "../x0ne-mcp" }
+x0ne-dataset = { path = "../x0ne-dataset" }
+
+# Workspace-shared
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+toml_edit.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true
+chrono.workspace = true
+dirs.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+tempfile.workspace = true
+uuid = { workspace = true }
+
+# Orchestrator-specific
+reqwest.workspace = true
+colored.workspace = true
+base64.workspace = true
+# SHA-256 of an asm-ai program source, for the authority key
+# (`ResourceIdentity::Module`). Computed HERE: the orchestrator deliberately does
+# not link `x0ne-runtime`, so `scripted::hash_source` is mirrored and kept equal by a test.
+sha2.workspace = true
+# Claim patterns of the honesty guard (`agent::honesty`).
+regex.workspace = true
+dotenvy.workspace = true
+rustyline.workspace = true
+indicatif.workspace = true
+ratatui = "0.30"
+crossterm = "0.29"
+ratatui-textarea = "0.9"
+# Converts ANSI-colored strings (produced by display.rs via the `colored`
+# crate) into ratatui-native `Text` so tui can reuse the exact same
+# action/result/preview rendering the rustyline CLI ships.
+ansi-to-tui = "8"
+local-ip-address = "0.6"
+rand = "0.10"
+# Embedded terminal for tui shell mode — a real VT100 emulator
+# wrapping a PTY so htop, vim, ping, ssh and any other curses /
+# interactive program runs live INSIDE the TUI. Replaces the older
+# suspend-mode approach (LeaveAlternateScreen, run, return) with a
+# proper embedded terminal grid we render as ratatui cells.
+vt100 = "0.16"
+portable-pty = "0.9"
+unicode-width = "0.2"
+textwrap = { version = "0.16", default-features = false, features = ["unicode-width"] }
+# Direct libc calls for the between-turn stdin drain (see
+# `input_queue.rs`). Using `poll(2)` with timeout=0 lets us check if
+# the user typed while the agent was busy without blocking the REPL.
+libc.workspace = true
+
+# HTTP serve mode (`x0ne --serve`) — gated by the `serve` feature.
+# Included in default features, so plain `cargo build` (debug or release) ships
+# with serve. To strip from a release binary (no axum, no /prompt entry point,
+# no tcp listener, no CLI flag), build with `--no-default-features`.
+axum = { workspace = true, features = ["macros"], optional = true }
+tower-http = { workspace = true, optional = true }
+async-stream = { version = "0.3", optional = true }
+
+[features]
+default = ["serve"]
+# Expose the `x0ne --serve` HTTP/SSE entry point. When off in a release build,
+# axum/tower-http/async-stream are dropped from the linkage entirely and the
+# `--serve`/`--bind`/`--serve-token` CLI flags disappear from `x0ne --help`.
+serve = ["dep:axum", "dep:tower-http", "dep:async-stream"]
+
+[dev-dependencies]
+# TEST ONLY, and it earns its build time. `cc_runner` writes an x0ne-runtime
+# policy file into the confidential VM, and the one thing that file has to be
+# is a file THAT runtime accepts: the 2026-08-10 incident was a generator still
+# writing the v0.2 schema, which produced a runtime that failed to boot on
+# every fresh install — silently, from the generator's point of view. Parsing
+# it here with the real `AppConfig::load` is the only way to test that, and it
+# is not a runtime dependency: the orchestrator talks to the runtime over the
+# bridge, never by linking it.
+x0ne-runtime = { path = "../x0ne-runtime" }
+
+[lints]
+workspace = true
+
+# These need a non-default feature.
+[[example]]
+name = "artifact_smoke"
+required-features = ["serve"]

@@ -1,0 +1,377 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# x0ne-runtime.toml  — reference configuration
+# `make install` deposits it at:
+#   ~/.config/x0ne/x0ne-runtime.toml
+#
+# Every section and every field has a sensible default; only override what you
+# need. An unknown key under [actions] refuses the load and names the key —
+# a typo there would otherwise silently fall to `default_effect`.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Runtime ───────────────────────────────────────────────────────────────────
+[runtime]
+# "stdio" (default) — read/write newline-delimited JSON on stdin/stdout.
+# "http"            — expose a JSON REST API instead.
+mode = "stdio"
+
+[runtime.http]
+# Uncomment to enable the HTTP server.
+# host = "127.0.0.1"
+# port = 7878
+
+# ── Policy ────────────────────────────────────────────────────────────────────
+[policy]
+# Who asks the human, and who enforces the lists.
+#
+# The HUMAN gate lives in the orchestrator — that is where a human is. It
+# prompts before every modifying action and holds the standing approvals.
+# This runtime is a confined EXECUTOR driven over stdio: it enforces the path
+# and command allowlists below, and cannot ask anyone anything.
+#
+# So `mode = "confirm"` here does NOT mean "ask first" — it means "deny every
+# modifying action", because the confirmation it waits for can never arrive.
+# Leaving it unset picked up exactly that default, and an approved RunCommand
+# came back "Action requires user approval" AFTER the operator approved it
+# (field report, 2026-08-12).
+#
+# "auto"     — enforce the lists below; the orchestrator owns the human gate.
+# "readonly" — refuse every modifying action outright.
+mode = "auto"
+
+# "deny" — an action absent from the resolved [actions] table is refused.
+# "allow" — it is allowed. This profile names EVERY action below, so the
+# value only matters for a name added to the vocabulary and not yet listed
+# here, or under `action_defaults = "replace"`: both fail closed. Until
+# 2026-10-05 this shipped "allow" while SECURITY.md promised deny-by-default,
+# and 52 actions were not named (audit 07, P0-3).
+default_effect = "deny"
+
+# Maximum bytes that ReadFile may return in one call.
+max_read_bytes = 1048576   # 1 MiB
+
+# Maximum entries returned by ListDir.
+max_list_entries = 512
+
+# Commands the LLM is allowed to invoke via RunCommand.
+#
+# BREAKING (2026-08-15): an EMPTY list now means DENY ALL — the same reading
+# of `[]` as `allowed_read_paths` and `allowed_write_paths` below. It used to
+# mean "no restriction configured", so the emptiest value in this table was
+# also the most permissive one, and this very file shipped `allowed_commands =
+# []` next to `RunCommand = true`. Over MCP that combination handed any client
+# `run_command {"command": "id"}` on the host (audit 2026-08-15).
+#
+# There is no wildcard on purpose: to allow a command, name it. Matching is
+# exact and on a BARE name (`git`, not `/usr/bin/git`) so that a planted
+# binary cannot answer for one you meant; list an absolute path if you really
+# mean one specific binary.
+allowed_commands = [
+    "git",
+    "cargo",
+    "rustc",
+    "ls",
+    "cat",
+    "grep",
+    "rg",
+    "find",
+    "make",
+]
+
+# Directories the agent may READ from.
+#
+# BREAKING (Aug 2026): an EMPTY list now means DENY ALL. It used to mean
+# "allow any path", which made the shipped default able to read any file on
+# the host. Containment is component-wise, so "/srv/root" does NOT grant
+# "/srv/rootEVIL". Paths are canonicalized: symlinks that resolve outside
+# every root are refused, and `..` cannot escape.
+allowed_read_paths = [
+    "~/code",
+]
+
+# Directories the agent may WRITE to (WriteFile / EditFile / ApplyPatch /
+# PatchSet / MoveToTrash / snapshot restore).
+#
+# BREAKING (Aug 2026): an EMPTY list now means DENY ALL. Writing *through* a
+# symlink is always refused, including a dangling one.
+allowed_write_paths = [
+    "~/code",
+    "/tmp",
+]
+
+# Glob patterns that are ALWAYS denied regardless of other rules — they beat
+# `allowed_read_paths` and `allowed_write_paths`, so a secret that lives inside
+# an allowed directory is still refused.
+#
+# SECURITY: this shipped EMPTY while SECURITY.md claimed the opposite, so a
+# fresh `make install` protected neither `~/.ssh` nor `.env` (audit
+# 2026-08-15). The list below is the floor, not a complete answer: add your own
+# secret stores. Same list as the compiled default
+# (`x0ne-actions/src/deny_paths.rs`), which the runtime applies even when this
+# list omits an entry: removing one here re-opens nothing.
+deny_path_patterns = [
+    "**/.ssh/**",
+    "**/.gnupg/**",
+    "**/id_rsa*",
+    "**/id_ed25519*",
+    "**/*.key",
+    "**/*.pem",
+    "**/secrets/**",
+    "**/.env*",
+    "/proc/**/environ",
+    "**/.x0ne/keys/**",
+    "**/.x0ne/run/**",
+    "/run/user/*/x0ne/**",
+    "**/.x0ne/config.toml",
+    "**/.x0ne/trusted-projects.toml",
+    "**/.x0ne/snapshots/**",
+    "**/.x0ne-secrets/**",
+    "**/.config/x0ne/**",
+    "**/.config/x0ne-orchestrator/**",
+    "**/.claude/.credentials.json",
+    "**/.codex/auth.json",
+    "**/.config/gh/**",
+    "**/.config/hub",
+    "**/.netrc",
+    "**/.git-credentials",
+    "**/.kube/**",
+    "**/.aws/**",
+    "**/.azure/**",
+    "**/.config/gcloud/**",
+    "**/.docker/config.json",
+    "**/.pgpass",
+    "**/.pypirc",
+    "**/.cargo/credentials*",
+    "**/.vault-token",
+    "**/.terraform.d/credentials.tfrc.json",
+    "**/.password-store/**",
+    "**/.local/share/keyrings/**",
+]
+
+# Default patterns lifted on purpose, each written exactly as above, e.g.
+# ["**/.env*"]. The only way to re-open one; announced at every start.
+deny_path_exceptions = []
+
+# Environment variables the LLM may read via GetEnv.
+# Empty array means all env vars are readable.
+readable_env_vars = []
+
+# Extra environment variables a spawned command may INHERIT, on top of the
+# built-in allowlist in `x0ne-runtime/src/child_env.rs` (PATH, HOME, LANG,
+# TERM, the LC_* family, SSL_CERT_*, the gcloud CLOUDSDK_* configuration
+# names, SSH_AUTH_SOCK, and the DISPLAY/WAYLAND/D-Bus set the desktop
+# primitives need). Everything else is erased before the command starts.
+#
+# Empty — the default — is STRICT, and it is empty for a reason. Until
+# 2026-08-15 a child inherited this process's whole environment: a canary
+# exported in the operator's shell came back out of `printenv` and landed both
+# in the model's context and, in clear text, in the session log
+# (AUDIT-2026-08-14.md, section 4). Since ~/.x0ne/.env is loaded into the
+# process, that was every API key on the machine.
+#
+# Add a name here only when a command genuinely needs it, and remember that it
+# is then readable by anything the agent runs — prompt injection included.
+# Never add an API key, token or credential: the runtime does not need one.
+env_passthrough = []
+
+# ── Per-action enable / disable ───────────────────────────────────────────────
+# true  → the action is allowed (still subject to path/command policy)
+# false → the action is always denied, regardless of default_effect
+#
+# Every action of the vocabulary is named, grouped by side-effect class, so
+# that this file IS the policy: nothing falls through to `default_effect` or
+# to the compiled-in defaults, and `action_defaults = "replace"` yields the
+# same table. A `false` below is what the compiled default already gave; a
+# profile that wants it flips the one line. An unknown name refuses the load.
+[actions]
+# ── Read-only ─────────────────────────────────────────────────────────────────
+ArtifactList   = true
+Assert         = true
+Checksum       = true
+Diff           = true
+FileInfo       = true
+ListMemory     = true
+ListProcesses  = true
+ListSnapshots  = true
+PreviewProgram = true
+ReadFile       = true
+ReadFiles      = true
+ReadLogs       = true
+Recall         = true
+SearchAndRead  = true
+SearchCode     = true
+StatFiles      = true
+
+# ── Meta / capability discovery — the five discovery calls ignore this map ───
+AskHuman             = true
+AskMultipleChoice    = true
+CallFunction         = true
+CallPrimitive        = false   # runs an operator-defined primitive: opt in
+CheckHandle          = true
+Confirm              = true
+DescribeAction       = true
+ListActions          = true
+ListCustomPrimitives = true
+ListFunctions        = true
+ListHandles          = true
+PaintBadge           = true
+PolicyCheck          = true
+RandomBytes          = true
+Subscribe            = true
+Validate             = true
+
+# ── Composites — each child is evaluated on its own ──────────────────────────
+If             = true
+Pipeline       = true
+RenderTemplate = true
+SafeChange     = true
+Simulate       = true
+Try            = true
+
+# ── Filesystem writes — the orchestrator's human gate stands in front ────────
+# (Until 2026-09-11 this comment said "DISABLED by default" above three
+# `= true` — audit 04-F03.) For a runtime driven by an MCP client with NO
+# human in front, use x0ne-runtime-mcp*.toml instead, or set these to false.
+WriteFile       = true
+CreateSnapshot  = true
+ApplyPatch      = false
+ArtifactCreate  = false
+ArtifactSave    = false
+DefineFunction  = false
+DefinePrimitive = false
+EditFile        = false
+PatchSet        = false
+Remember        = false
+RunProgram      = false
+
+# ── Process spawn — command allowlist and isolation apply ────────────────────
+RunCommand        = true
+ArtifactServe     = false
+CloudCost         = false
+DocumentExtract   = false
+GpuStatus         = false
+Listen            = false
+RunContainerGroup = false
+RunInSandbox      = false
+SafeTest          = false
+SendInput         = false
+WatchAndReact     = false
+# Terminals: opening and typing run programs on this host. Reads stay on.
+TermOpen          = false
+TermSend          = false
+TermResize        = false
+TermRead          = true
+TermWait          = true
+TermSnapshot      = true
+TermList          = true
+
+# ── Destructive ───────────────────────────────────────────────────────────────
+MoveToTrash     = true
+RestoreSnapshot = true
+DeleteSnapshot  = true
+StopHandle      = true
+TermClose       = false
+ArtifactDestroy = false
+ArtifactStop    = false
+DeleteFunction  = false
+DeletePrimitive = false
+Forget          = false
+
+# ── Network — OFF by default: an outbound request is the egress branch of an
+# exfiltration, and the request line is model-written. The two probes stay
+# on because the orchestrator waives them for the loopback only and asks a
+# human for any other host (agent/readonly_net.rs).
+DnsLookup       = true
+PortCheck       = true
+DatasetGenerate = false
+FetchUrl        = false
+HttpRequest     = false
+LlmCall         = false
+OllamaApi       = false
+OllamaChat      = false
+SshExec         = false
+WebSearch       = false
+
+# ── Desktop / Wayland — DISABLED by default ───────────────────────────────────
+# Also requires [desktop] enabled = true below AND the external binaries
+# (grim, wlrctl, wtype, swaymsg, wl-copy/paste, notify-send) to be installed.
+Screenshot          = false
+GetWindowTree       = false
+GetFocusedWindow    = false
+MoveMouse           = false
+Click               = false
+DoubleClick         = false
+Scroll              = false
+TypeText            = false
+PressKey            = false
+PressKeyCombination = false
+FocusWindow         = false
+SendNotification    = false
+GetClipboard        = false
+SetClipboard        = false
+
+# ── Snapshots ─────────────────────────────────────────────────────────────────
+[snapshots]
+# Where snapshots are stored.
+dir = "~/.x0ne/snapshots"
+# Maximum number of snapshots kept simultaneously.
+max_snapshots = 50
+# Maximum bytes byte-copied into one snapshot, in megabytes. Reflinked files
+# (btrfs, XFS) share blocks and are not counted. 0 refuses every snapshot.
+max_snapshot_size_mb = 100
+
+# ── Handle manager ────────────────────────────────────────────────────────────
+[handles]
+# Maximum concurrent streaming handles (RunCommand stream:true / Subscribe).
+max_concurrent = 20
+# How many seconds a completed/failed handle is retained for polling.
+completed_retention_secs = 300
+
+# ── Event subscriptions ───────────────────────────────────────────────────────
+[events]
+# Maximum simultaneous subscriptions.
+max_subscriptions = 20
+# Ring-buffer size per handle; oldest events are dropped when full.
+max_events_per_handle = 1000
+# Minimum milliseconds between file-change events (debounce).
+debounce_ms = 500
+# How often PortOpen checks the port (seconds).
+port_check_interval_secs = 2
+# How long before a PortOpen subscription times out (seconds).
+port_check_timeout_secs = 300
+
+# ── System ────────────────────────────────────────────────────────────────────
+[system]
+# Expose /proc-based process listing via ListProcesses.
+enable_process_list = true
+
+# ── Desktop / Wayland ─────────────────────────────────────────────────────────
+[desktop]
+# Master switch — must be true before any desktop action can run.
+# Even when true, each action must also be enabled under [actions].
+enabled = true
+
+# If non-empty, FocusWindow only works on windows whose title or app_id
+# matches one of these substrings.
+allowed_apps = []
+# ["firefox", "alacritty", "code"]
+
+# Require an explicit Confirm action before taking a screenshot.
+screenshot_confirm = true
+
+# Minimum milliseconds between input actions (anti-runaway protection).
+input_rate_limit_ms = 100
+
+# Hard cap: input actions per minute.
+max_input_actions_per_minute = 120
+
+# Where screenshots are saved.
+screenshot_dir = "~/.x0ne/screenshots"
+
+[isolation]
+# Agent commands (RunCommand, Listen, SafeTest, ArtifactServe) run under
+# bubblewrap: read-only root, writable allowed_write_paths, no network,
+# ~/.ssh ~/.aws ~/.config/gcloud ~/.x0ne … hidden. Without bubblewrap they
+# are refused. Switching this off is a command-line flag only
+# (`x0ne-runtime --isolation none`), never a key of this file.
+# Extra paths to hide, on top of the built-in list:
+hidden_paths = []

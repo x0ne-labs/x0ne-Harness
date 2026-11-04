@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# scripts/capped — run a command inside its own memory-capped cgroup.
+#
+# Why this exists (2026-08-16): twice, a mutation campaign turned a test into
+# a memory bomb (a mock answering forever; a fixture sized from a constant that
+# had been mutated to u64::MAX/2). Both times the process ran in the user's
+# session cgroup, so systemd-oomd could only kill the whole X session, and the
+# machine went down with it. Inside its own scope with MemoryMax, the kernel
+# kills the runaway process alone.
+#
+# Usage:  scripts/capped cargo test --workspace
+#         X0NE_MEMCAP=24G scripts/capped cargo test -p x0ne-orchestrator
+#
+# Falls back to a per-process address-space limit when systemd-run is not
+# usable (containers, CI without a user manager), and says so.
+
+set -euo pipefail
+
+cap="${X0NE_MEMCAP:-16G}"
+
+if [ "$#" -eq 0 ]; then
+    echo "usage: scripts/capped <command> [args...]   (X0NE_MEMCAP=$cap)" >&2
+    exit 2
+fi
+
+# Already inside a capped scope (nested make -> cargo): don't wrap again.
+if [ "${X0NE_CAPPED:-}" = "1" ]; then
+    exec "$@"
+fi
+export X0NE_CAPPED=1
+
+if command -v systemd-run >/dev/null 2>&1 \
+   && systemd-run --user --scope --quiet -p MemoryMax="$cap" -- true 2>/dev/null; then
+    exec systemd-run --user --scope --quiet \
+        -p MemoryMax="$cap" -p MemorySwapMax=0 \
+        -- "$@"
+fi
+
+# Fallback: RLIMIT_AS in KiB. Coarser (per process, counts virtual memory),
+# but a runaway allocation still dies alone.
+kib=$(numfmt --from=iec --to-unit=1024 "$cap" 2>/dev/null || echo $((16*1024*1024)))
+echo "capped: systemd-run unavailable, falling back to ulimit -v $kib KiB" >&2
+ulimit -v "$kib"
+exec "$@"

@@ -1,0 +1,31 @@
+# Bench policy for corpus B. A disposable tree, the two program actions on,
+# everything else denied: definition (ii) is "passes the verifier against the
+# TEST policy", and a permissive policy would pass what a real install refuses.
+# Paths are relative to x0ne-orchestrator/ (where `cargo test` runs).
+
+[runtime]
+mode = "stdio"
+
+[policy]
+mode = "auto"
+default_effect = "deny"
+max_read_bytes = 2097152
+max_list_entries = 1000
+allowed_commands = []
+allowed_read_paths  = ["tests/fixtures/asm_bench_tree"]
+allowed_write_paths = ["tests/fixtures/asm_bench_tree"]
+deny_path_patterns = ["**/.ssh/**", "**/*.key", "**/*.pem", "**/secrets/**"]
+
+[actions]
+PreviewProgram = true
+RunProgram = true
+# The verifier proves each expanded path with ReadFile/WriteFile probes
+# (asm_verify.rs:437-445). Measured 2026-10-06, run 1: without WriteFile every
+# edit program was refused as "action type disabled", a bench defect, not a
+# model one. ReadFile is a safe default and needs no line.
+WriteFile = true
+
+[snapshots]
+dir = "/tmp/x0ne-asm-bench-snapshots"
+max_snapshots = 0
+max_snapshot_size_mb = 0

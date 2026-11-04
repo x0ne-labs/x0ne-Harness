@@ -1,0 +1,241 @@
+[
+  {
+    "name": "define_simple_ephemeral_primitive",
+    "description": "DefinePrimitive with a single step must succeed and return PrimitiveDefined",
+    "action": {
+      "type": "DefinePrimitive",
+      "name": "test_simple_def",
+      "description": "writes a fixed string",
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/composite_simple.txt", "content": "from-composite" }
+      ],
+      "ephemeral": true
+    },
+    "expect": {
+      "success": true,
+      "output_kind": "primitive_defined",
+      "output_contains": "test_simple_def"
+    }
+  },
+
+  {
+    "name": "call_simple_primitive_executes_steps",
+    "description": "After DefinePrimitive, CallPrimitive must run the embedded steps",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        {
+          "type": "DefinePrimitive",
+          "name": "test_call_simple",
+          "steps": [
+            { "type": "WriteFile", "path": "{{TEST_DIR}}/composite_call.txt", "content": "called-it" }
+          ],
+          "ephemeral": true
+        },
+        { "type": "CallPrimitive", "name": "test_call_simple" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "steps_total": 2, "steps_completed": 2, "step_success": [true, true] },
+      "side_effects": [
+        { "kind": "file_content", "path": "{{TEST_DIR}}/composite_call.txt", "equals": "called-it" }
+      ]
+    }
+  },
+
+  {
+    "name": "primitive_with_param_substitution",
+    "description": "Composite parameters must be interpolated into step bodies at call time",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        {
+          "type": "DefinePrimitive",
+          "name": "test_param_sub",
+          "params": {
+            "filename": { "type": "string", "required": true },
+            "payload":  { "type": "string", "required": true }
+          },
+          "steps": [
+            { "type": "WriteFile", "path": "{{TEST_DIR}}/{filename}", "content": "{payload}" }
+          ],
+          "ephemeral": true
+        },
+        {
+          "type": "CallPrimitive",
+          "name": "test_param_sub",
+          "args": { "filename": "param_subbed.txt", "payload": "interpolated-value" }
+        }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "step_success": [true, true] },
+      "side_effects": [
+        { "kind": "file_content", "path": "{{TEST_DIR}}/param_subbed.txt", "equals": "interpolated-value" }
+      ]
+    }
+  },
+
+  {
+    "name": "missing_required_param_errors_at_call",
+    "description": "Calling a primitive without a required arg must fail with InvalidInput. T2: pipeline-level success is false because the second step fails — per-step results still verify the failure is correctly attributed to step 1.",
+    "action": {
+      "type": "Pipeline",
+      "stop_on_error": false,
+      "steps": [
+        {
+          "type": "DefinePrimitive",
+          "name": "test_missing_param",
+          "params": { "needed": { "type": "string", "required": true } },
+          "steps": [
+            { "type": "WriteFile", "path": "{{TEST_DIR}}/missing.txt", "content": "{needed}" }
+          ],
+          "ephemeral": true
+        },
+        { "type": "CallPrimitive", "name": "test_missing_param", "args": {} }
+      ]
+    },
+    "expect": {
+      "success": false,
+      "pipeline": { "step_success": [true, false], "first_failed_index": 1 }
+    }
+  },
+
+  {
+    "name": "self_recursive_composite_is_blocked",
+    "description": "Defining a composite that calls itself must be rejected as CompositeError",
+    "action": {
+      "type": "DefinePrimitive",
+      "name": "test_recursive_self",
+      "steps": [
+        { "type": "CallPrimitive", "name": "test_recursive_self" }
+      ],
+      "ephemeral": true
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "composite_error",
+      "output_not_contains": "primitive_defined"
+    }
+  },
+
+  {
+    "name": "cannot_define_with_native_action_name",
+    "description": "Defining a composite named like a native action (e.g. ReadFile) must be refused",
+    "action": {
+      "type": "DefinePrimitive",
+      "name": "ReadFile",
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/should_not.txt", "content": "x" }
+      ],
+      "ephemeral": true
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "composite_error"
+    }
+  },
+
+  {
+    "name": "call_unknown_primitive_returns_not_found",
+    "description": "CallPrimitive for an undefined name must error with NotFound",
+    "action": {
+      "type": "CallPrimitive",
+      "name": "no_such_primitive_anywhere"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "not_found"
+    }
+  },
+
+  {
+    "name": "list_primitives_returns_known_definitions",
+    "description": "After defining a primitive, ListCustomPrimitives must include it",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        {
+          "type": "DefinePrimitive",
+          "name": "test_listed",
+          "steps": [ { "type": "FileInfo", "path": "{{TEST_DIR}}/hello.txt" } ],
+          "ephemeral": true
+        },
+        { "type": "ListCustomPrimitives" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "output_contains": "test_listed",
+      "pipeline": { "step_success": [true, true] }
+    }
+  },
+
+  {
+    "name": "delete_primitive_removes_it",
+    "description": "DeletePrimitive then CallPrimitive on the same name must yield NotFound. T2: the third step fails, so the pipeline-level success is false — step_success still proves only the third step failed. The primitive body writes a canary file, so path_missing additionally proves the deleted body never ran.",
+    "action": {
+      "type": "Pipeline",
+      "stop_on_error": false,
+      "steps": [
+        {
+          "type": "DefinePrimitive",
+          "name": "test_to_delete",
+          "steps": [
+            {
+              "type": "WriteFile",
+              "path": "{{TEST_DIR}}/deleted_primitive_canary.txt",
+              "content": "the deleted primitive must never execute"
+            }
+          ],
+          "ephemeral": true
+        },
+        { "type": "DeletePrimitive", "name": "test_to_delete" },
+        { "type": "CallPrimitive", "name": "test_to_delete" }
+      ]
+    },
+    "expect": {
+      "success": false,
+      "output_contains": "not_found",
+      "pipeline": {
+        "steps_total": 3,
+        "steps_completed": 3,
+        "step_success": [true, true, false]
+      },
+      "side_effects": [
+        { "kind": "path_missing", "path": "{{TEST_DIR}}/deleted_primitive_canary.txt" }
+      ]
+    }
+  },
+
+  {
+    "name": "call_primitive_propagates_step_failure",
+    "description": "If a step inside the composite fails, the CallPrimitive result must reflect stopped_early=true",
+    "action": {
+      "type": "Pipeline",
+      "stop_on_error": false,
+      "steps": [
+        {
+          "type": "DefinePrimitive",
+          "name": "test_inner_fail",
+          "steps": [
+            { "type": "WriteFile", "path": "{{TEST_DIR}}/inner_a.txt", "content": "a" },
+            { "type": "ReadFile",  "path": "/tmp/x0ne-composite-missing-xyz.txt" },
+            { "type": "WriteFile", "path": "{{TEST_DIR}}/inner_c.txt", "content": "should-not-write" }
+          ],
+          "ephemeral": true
+        },
+        { "type": "CallPrimitive", "name": "test_inner_fail" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "side_effects": [
+        { "kind": "path_exists",  "path": "{{TEST_DIR}}/inner_a.txt" },
+        { "kind": "path_missing", "path": "{{TEST_DIR}}/inner_c.txt" }
+      ]
+    }
+  }
+]

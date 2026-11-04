@@ -1,0 +1,33 @@
+[package]
+name = "x0ne-asm"
+description = "asm-ai: the declarative program language an X0NE agent emits, its typed IR, the WASM module it compiles to, and the reader that derives a module's capability claims from the artifact. Pure: no filesystem, no policy, no wasmtime."
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+
+# SECURITY: pinned exactly to what wasmtime 36.0.19 (LTS line) already pulls
+# (its Cargo.toml, read 2026-10-24). A newer version would duplicate `wasmparser`: two
+# validators, two semantics, which `WASM_FEATURES` exists to prevent. Pre-1.0: `^` protects nothing.
+wasm-encoder = "=0.236.0"
+wasmparser   = "=0.236.0"
+# The manifest codec. bincode is unmaintained (RUSTSEC-2025-0141; 3.0.0 is a
+# compile_error! tombstone). postcard's wire format is specified and frozen for 1.x;
+# `tests/manifest_wire_format.rs` pins the bytes against the former bincode 2 output.
+postcard     = { version = "1.1", default-features = false, features = ["alloc"] }
+
+# Corpus A reads its fixtures as JSONL and the IR round-trips through JSON in
+# tests only. Production returns a typed IR and serializes for nobody.
+[dev-dependencies]
+serde_json = { workspace = true }
+# Corpus C: adversarial modules are written in WAT, not in raw bytes.
+wat = "=1.236.0"
+
+[lints]
+workspace = true

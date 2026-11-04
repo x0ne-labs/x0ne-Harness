@@ -1,0 +1,2332 @@
+[
+{
+"category": "ReadOnly",
+"description": "Read the full contents of a file (UTF-8).",
+"mutable": false,
+"schema": {
+"properties": {
+"limit": {
+"type": "integer"
+},
+"limit_lines": {
+"type": "integer"
+},
+"offset": {
+"type": "integer"
+},
+"path": {
+"type": "string"
+},
+"start_line": {
+"type": "integer"
+}
+},
+"required": [
+"path"
+],
+"type": "object"
+},
+"source": "native",
+"type": "ReadFile"
+},
+{
+"category": "ReadOnly",
+"description": "Read several files in one policy-checked action.",
+"mutable": false,
+"schema": {
+"properties": {
+"max_bytes_per_file": {
+"type": "integer"
+},
+"paths": {
+"type": "array"
+}
+},
+"required": [
+"paths"
+],
+"type": "object"
+},
+"source": "native",
+"type": "ReadFiles"
+},
+{
+"category": "FsWrite",
+"description": "Overwrite (or create) a file with new content.",
+"mutable": true,
+"schema": {
+"properties": {
+"content": {
+"type": "string"
+},
+"path": {
+"type": "string"
+}
+},
+"required": [
+"path",
+"content"
+],
+"type": "object"
+},
+"source": "native",
+"type": "WriteFile"
+},
+{
+"category": "FsWrite",
+"description": "Apply multiple edits to a single file sequentially.",
+"mutable": true,
+"schema": {
+"properties": {
+"create_if_missing": {
+"type": "boolean"
+},
+"edits": {
+"type": "array"
+},
+"path": {
+"type": "string"
+}
+},
+"required": [
+"path",
+"edits"
+],
+"type": "object"
+},
+"source": "native",
+"type": "EditFile"
+},
+{
+"category": "FsWrite",
+"description": "Apply a standard unified diff patch.",
+"mutable": true,
+"schema": {
+"properties": {
+"patch": {
+"type": "string"
+},
+"path": {
+"type": "string"
+},
+"reverse": {
+"type": "boolean"
+}
+},
+"required": [
+"path",
+"patch"
+],
+"type": "object"
+},
+"source": "native",
+"type": "ApplyPatch"
+},
+{
+"category": "ReadOnly",
+"description": "Metadata for several files, optionally including sha256.",
+"mutable": false,
+"schema": {
+"properties": {
+"hash": {
+"type": "boolean"
+},
+"paths": {
+"type": "array"
+}
+},
+"required": [
+"paths"
+],
+"type": "object"
+},
+"source": "native",
+"type": "StatFiles"
+},
+{
+"category": "FsWrite",
+"description": "Apply multiple unified diffs in one action.",
+"mutable": true,
+"schema": {
+"properties": {
+"patches": {
+"type": "array"
+},
+"stop_on_error": {
+"type": "boolean"
+}
+},
+"required": [
+"patches"
+],
+"type": "object"
+},
+"source": "native",
+"type": "PatchSet"
+},
+{
+"category": "ReadOnly",
+"description": "Search and return surrounding context chunks in one call.",
+"mutable": false,
+"schema": {
+"properties": {
+"context_lines": {
+"type": "integer"
+},
+"file_glob": {
+"type": "string"
+},
+"limit": {
+"type": "integer"
+},
+"pattern": {
+"type": "string"
+},
+"patterns": {
+"type": "array"
+},
+"root": {
+"type": "string"
+}
+},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "SearchAndRead"
+},
+{
+"category": "ProcessSpawn",
+"description": "Run a typed test command without raw shell syntax.",
+"mutable": true,
+"schema": {
+"properties": {
+"filter": {
+"type": "string"
+},
+"kind": {
+"type": "string"
+},
+"path": {
+"type": "string"
+},
+"scope": {
+"type": "string"
+},
+"timeout_secs": {
+"type": "integer"
+}
+},
+"required": [
+"kind"
+],
+"type": "object"
+},
+"source": "native",
+"type": "SafeTest"
+},
+{
+"category": "Destructive",
+"description": "Move a file or directory to the OS trash.",
+"mutable": true,
+"schema": {
+"properties": {
+"path": {
+"type": "string"
+}
+},
+"required": [
+"path"
+],
+"type": "object"
+},
+"source": "native",
+"type": "MoveToTrash"
+},
+{
+"category": "ReadOnly",
+"description": "Regex search inside file contents under a directory.",
+"mutable": false,
+"schema": {
+"properties": {
+"file_glob": {
+"type": "string"
+},
+"limit": {
+"type": "integer"
+},
+"pattern": {
+"type": "string"
+},
+"patterns": {
+"type": "array"
+},
+"root": {
+"type": "string"
+}
+},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "SearchCode"
+},
+{
+"category": "Network",
+"description": "Perform an HTTP GET request and return the body.",
+"mutable": true,
+"schema": {
+"properties": {
+"headers": {
+"type": "any"
+},
+"url": {
+"type": "string"
+}
+},
+"required": [
+"url"
+],
+"type": "object"
+},
+"source": "native",
+"type": "FetchUrl"
+},
+{
+"category": "Network",
+"description": "Search the web and return a ranked list of `{title, url, snippet}`",
+"mutable": true,
+"schema": {
+"properties": {
+"limit": {
+"type": "integer"
+},
+"query": {
+"type": "string"
+}
+},
+"required": [
+"query",
+"limit"
+],
+"type": "object"
+},
+"source": "native",
+"type": "WebSearch"
+},
+{
+"category": "Network",
+"description": "Full HTTP request: any method, headers, body, returns status + headers + body.",
+"mutable": true,
+"schema": {
+"properties": {
+"body": {
+"type": "string"
+},
+"headers": {
+"type": "any"
+},
+"method": {
+"type": "string"
+},
+"timeout_secs": {
+"type": "integer"
+},
+"url": {
+"type": "string"
+}
+},
+"required": [
+"url"
+],
+"type": "object"
+},
+"source": "native",
+"type": "HttpRequest"
+},
+{
+"category": "ProcessSpawn",
+"description": "Run a shell command (requires explicit policy allow).",
+"mutable": true,
+"schema": {
+"properties": {
+"args": {
+"type": "array"
+},
+"command": {
+"type": "string"
+},
+"cwd": {
+"type": "string"
+},
+"env": {
+"type": "any"
+},
+"stream": {
+"type": "boolean"
+},
+"timeout_secs": {
+"type": "integer"
+}
+},
+"required": [
+"command"
+],
+"type": "object"
+},
+"source": "native",
+"type": "RunCommand"
+},
+{
+"category": "Network",
+"description": "Run a single command on a remote host via the local OpenSSH client.",
+"mutable": true,
+"schema": {
+"properties": {
+"args": {
+"type": "array"
+},
+"command": {
+"type": "string"
+},
+"cwd": {
+"type": "string"
+},
+"env": {
+"type": "any"
+},
+"host": {
+"type": "string"
+},
+"ssh_options": {
+"type": "array"
+},
+"timeout_secs": {
+"type": "integer"
+}
+},
+"required": [
+"host",
+"command"
+],
+"type": "object"
+},
+"source": "native",
+"type": "SshExec"
+},
+{
+"category": "ProcessSpawn",
+"description": "Report the current cloud burn rate + any idle-GPU waste. Runs",
+"mutable": true,
+"schema": {
+"properties": {
+"project": {
+"type": "string"
+},
+"provider": {
+"type": "string"
+}
+},
+"required": [
+"provider"
+],
+"type": "object"
+},
+"source": "native",
+"type": "CloudCost"
+},
+{
+"category": "ProcessSpawn",
+"description": "Report GPU state (util, memory, temp, attached processes). `host` None",
+"mutable": true,
+"schema": {
+"properties": {
+"host": {
+"type": "string"
+}
+},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "GpuStatus"
+},
+{
+"category": "ProcessSpawn",
+"description": "Run arbitrary code inside an ephemeral Podman container (auto-removed after exit).",
+"mutable": true,
+"schema": {
+"properties": {
+"collect_files": {
+"type": "array"
+},
+"command": {
+"type": "array"
+},
+"cpu_limit": {
+"type": "integer"
+},
+"env": {
+"type": "any"
+},
+"files": {
+"type": "any"
+},
+"image": {
+"type": "string"
+},
+"memory_mb": {
+"type": "integer"
+},
+"network": {
+"type": "boolean"
+},
+"timeout_secs": {
+"type": "integer"
+}
+},
+"required": [
+"image"
+],
+"type": "object"
+},
+"source": "native",
+"type": "RunInSandbox"
+},
+{
+"category": "ProcessSpawn",
+"description": "Run multiple tasks across isolated parallel Podman containers.",
+"mutable": true,
+"schema": {
+"properties": {
+"max_parallel": {
+"type": "integer"
+},
+"memory_mb": {
+"type": "integer"
+},
+"network": {
+"type": "boolean"
+},
+"tasks": {
+"type": "array"
+},
+"timeout_secs": {
+"type": "integer"
+}
+},
+"required": [
+"tasks"
+],
+"type": "object"
+},
+"source": "native",
+"type": "RunContainerGroup"
+},
+{
+"category": "ReadOnly",
+"description": "Read the tail of a log file.",
+"mutable": false,
+"schema": {
+"properties": {
+"lines": {
+"type": "integer"
+},
+"path": {
+"type": "string"
+}
+},
+"required": [
+"path"
+],
+"type": "object"
+},
+"source": "native",
+"type": "ReadLogs"
+},
+{
+"category": "Meta",
+"description": "Ask the human operator a freeform question; returns their typed answer.",
+"mutable": false,
+"schema": {
+"properties": {
+"question": {
+"type": "string"
+}
+},
+"required": [
+"question"
+],
+"type": "object"
+},
+"source": "native",
+"type": "AskHuman"
+},
+{
+"category": "Meta",
+"description": "Ask the human operator for a yes/no confirmation.",
+"mutable": false,
+"schema": {
+"properties": {
+"message": {
+"type": "string"
+}
+},
+"required": [
+"message"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Confirm"
+},
+{
+"category": "Meta",
+"description": "Ask the human operator a multiple-choice question (QCM).",
+"mutable": false,
+"schema": {
+"properties": {
+"allow_other": {
+"type": "boolean"
+},
+"allow_skip": {
+"type": "boolean"
+},
+"choices": {
+"type": "array"
+},
+"question": {
+"type": "string"
+}
+},
+"required": [
+"question",
+"choices"
+],
+"type": "object"
+},
+"source": "native",
+"type": "AskMultipleChoice"
+},
+{
+"category": "Composite",
+"description": "Execute multiple actions in a single request.",
+"mutable": true,
+"schema": {
+"properties": {
+"parallel": {
+"type": "boolean"
+},
+"snapshot_before": {
+"type": "string"
+},
+"steps": {
+"type": "array"
+},
+"stop_on_error": {
+"type": "boolean"
+}
+},
+"required": [
+"steps"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Pipeline"
+},
+{
+"category": "Composite",
+"description": "Try: execute a sequence of actions with automatic snapshot + rollback on failure.",
+"mutable": true,
+"schema": {
+"properties": {
+"actions": {
+"type": "array"
+},
+"keep_snapshot": {
+"type": "boolean"
+},
+"label": {
+"type": "string"
+},
+"rollback_on_fail": {
+"type": "boolean"
+}
+},
+"required": [
+"actions"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Try"
+},
+{
+"category": "Composite",
+"description": "SafeChange: transactional agent change loop.",
+"mutable": true,
+"schema": {
+"properties": {
+"keep_snapshot": {
+"type": "boolean"
+},
+"label": {
+"type": "string"
+},
+"rollback_on_fail": {
+"type": "boolean"
+},
+"steps": {
+"type": "array"
+},
+"tests": {
+"type": "array"
+}
+},
+"required": [
+"steps"
+],
+"type": "object"
+},
+"source": "native",
+"type": "SafeChange"
+},
+{
+"category": "Composite",
+"description": "Conditional execution: evaluate a check, then run either `then` or",
+"mutable": true,
+"schema": {
+"properties": {
+"actual": {
+"type": "any"
+},
+"args": {
+"type": "array"
+},
+"check": {
+"type": "string"
+},
+"command": {
+"type": "string"
+},
+"else_branch": {
+"type": "array"
+},
+"expected": {
+"type": "any"
+},
+"host": {
+"type": "string"
+},
+"name": {
+"type": "string"
+},
+"path": {
+"type": "string"
+},
+"port": {
+"type": "integer"
+},
+"then": {
+"type": "array"
+},
+"value": {
+"type": "any"
+}
+},
+"required": [
+"check"
+],
+"type": "object"
+},
+"source": "native",
+"type": "If"
+},
+{
+"category": "Composite",
+"description": "Render a string template, substituting `{{tool(args)}}` placeholders",
+"mutable": true,
+"schema": {
+"properties": {
+"max_depth": {
+"type": "integer"
+},
+"strict": {
+"type": "boolean"
+},
+"template": {
+"type": "string"
+}
+},
+"required": [
+"template"
+],
+"type": "object"
+},
+"source": "native",
+"type": "RenderTemplate"
+},
+{
+"category": "ReadOnly",
+"description": "Assert: verify a condition without side effects.",
+"mutable": false,
+"schema": {
+"properties": {
+"actual": {
+"type": "any"
+},
+"args": {
+"type": "array"
+},
+"check": {
+"type": "string"
+},
+"command": {
+"type": "string"
+},
+"expected": {
+"type": "any"
+},
+"host": {
+"type": "string"
+},
+"name": {
+"type": "string"
+},
+"path": {
+"type": "string"
+},
+"port": {
+"type": "integer"
+},
+"value": {
+"type": "any"
+}
+},
+"required": [
+"check"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Assert"
+},
+{
+"category": "FsWrite",
+"description": "Create a snapshot of the given file paths.",
+"mutable": true,
+"schema": {
+"properties": {
+"name": {
+"type": "string"
+},
+"paths": {
+"type": "array"
+}
+},
+"required": [
+"name",
+"paths"
+],
+"type": "object"
+},
+"source": "native",
+"type": "CreateSnapshot"
+},
+{
+"category": "Destructive",
+"description": "Restore all files from a named snapshot.",
+"mutable": true,
+"schema": {
+"properties": {
+"name": {
+"type": "string"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "RestoreSnapshot"
+},
+{
+"category": "ReadOnly",
+"description": "List all available snapshots.",
+"mutable": false,
+"schema": {
+"properties": {},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "ListSnapshots"
+},
+{
+"category": "Destructive",
+"description": "Delete a named snapshot.",
+"mutable": true,
+"schema": {
+"properties": {
+"name": {
+"type": "string"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "DeleteSnapshot"
+},
+{
+"category": "Meta",
+"description": "Subscribe to a machine event. Returns a handle.",
+"mutable": false,
+"schema": {
+"properties": {
+"config": {
+"type": "any"
+},
+"event_type": {
+"type": "any"
+}
+},
+"required": [
+"event_type"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Subscribe"
+},
+{
+"category": "Meta",
+"description": "Drain buffered events from a handle.",
+"mutable": false,
+"schema": {
+"properties": {
+"handle": {
+"type": "string"
+}
+},
+"required": [
+"handle"
+],
+"type": "object"
+},
+"source": "native",
+"type": "CheckHandle"
+},
+{
+"category": "Destructive",
+"description": "Stop and cancel a running handle.",
+"mutable": true,
+"schema": {
+"properties": {
+"handle": {
+"type": "string"
+}
+},
+"required": [
+"handle"
+],
+"type": "object"
+},
+"source": "native",
+"type": "StopHandle"
+},
+{
+"category": "Meta",
+"description": "List all active and recent handles.",
+"mutable": false,
+"schema": {
+"properties": {},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "ListHandles"
+},
+{
+"category": "ProcessSpawn",
+"description": "Send text input to a running streaming process's stdin.",
+"mutable": true,
+"schema": {
+"properties": {
+"handle": {
+"type": "string"
+},
+"input": {
+"type": "string"
+}
+},
+"required": [
+"handle",
+"input"
+],
+"type": "object"
+},
+"source": "native",
+"type": "SendInput"
+},
+{
+"category": "ProcessSpawn",
+"description": "Open a named terminal (tmux pane, or a native PTY) running a program.",
+"mutable": true,
+"schema": {
+"properties": {
+"args": {
+"type": "array"
+},
+"cols": {
+"type": "integer"
+},
+"command": {
+"type": "string"
+},
+"cwd": {
+"type": "string"
+},
+"name": {
+"type": "string"
+},
+"rows": {
+"type": "integer"
+}
+},
+"required": [
+"name",
+"command"
+],
+"type": "object"
+},
+"source": "native",
+"type": "TermOpen"
+},
+{
+"category": "ProcessSpawn",
+"description": "Type into a terminal: literal `text`, then named `keys`.",
+"mutable": true,
+"schema": {
+"properties": {
+"keys": {
+"type": "array"
+},
+"name": {
+"type": "string"
+},
+"text": {
+"type": "string"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "TermSend"
+},
+{
+"category": "ReadOnly",
+"description": "Read a terminal: the visible screen, or the last `history` lines.",
+"mutable": false,
+"schema": {
+"properties": {
+"diff": {
+"type": "boolean"
+},
+"history": {
+"type": "integer"
+},
+"name": {
+"type": "string"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "TermRead"
+},
+{
+"category": "ReadOnly",
+"description": "Wait until a regex appears, the screen is stable, or the program exits.",
+"mutable": false,
+"schema": {
+"properties": {
+"diff": {
+"type": "boolean"
+},
+"exit": {
+"type": "boolean"
+},
+"name": {
+"type": "string"
+},
+"pattern": {
+"type": "string"
+},
+"stable_ms": {
+"type": "integer"
+},
+"timeout_ms": {
+"type": "integer"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "TermWait"
+},
+{
+"category": "ProcessSpawn",
+"description": "Resize a terminal.",
+"mutable": true,
+"schema": {
+"properties": {
+"cols": {
+"type": "integer"
+},
+"name": {
+"type": "string"
+},
+"rows": {
+"type": "integer"
+}
+},
+"required": [
+"name",
+"cols",
+"rows"
+],
+"type": "object"
+},
+"source": "native",
+"type": "TermResize"
+},
+{
+"category": "ReadOnly",
+"description": "Whole scrollback and screen of a terminal, plain or with ANSI colours.",
+"mutable": false,
+"schema": {
+"properties": {
+"ansi": {
+"type": "boolean"
+},
+"name": {
+"type": "string"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "TermSnapshot"
+},
+{
+"category": "ReadOnly",
+"description": "List the open terminals.",
+"mutable": false,
+"schema": {
+"properties": {},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "TermList"
+},
+{
+"category": "Destructive",
+"description": "Close a terminal and kill what runs in it.",
+"mutable": true,
+"schema": {
+"properties": {
+"name": {
+"type": "string"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "TermClose"
+},
+{
+"category": "ProcessSpawn",
+"description": "Listen to a long-running command and turn its interesting lines into",
+"mutable": true,
+"schema": {
+"properties": {
+"args": {
+"type": "array"
+},
+"command": {
+"type": "string"
+},
+"filter": {
+"type": "string"
+},
+"max_lines": {
+"type": "integer"
+},
+"persistent": {
+"type": "boolean"
+},
+"window_ms": {
+"type": "integer"
+}
+},
+"required": [
+"command"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Listen"
+},
+{
+"category": "ProcessSpawn",
+"description": "Watch a file or directory and automatically execute an action when",
+"mutable": true,
+"schema": {
+"properties": {
+"action": {
+"type": "any"
+},
+"debounce_ms": {
+"type": "integer"
+},
+"max_triggers": {
+"type": "integer"
+},
+"path": {
+"type": "string"
+},
+"pattern": {
+"type": "string"
+},
+"recursive": {
+"type": "boolean"
+}
+},
+"required": [
+"path",
+"action"
+],
+"type": "object"
+},
+"source": "native",
+"type": "WatchAndReact"
+},
+{
+"category": "Meta",
+"description": "Check if an action would be allowed by policy (without executing it).",
+"mutable": false,
+"schema": {
+"properties": {
+"action": {
+"type": "any"
+}
+},
+"required": [
+"action"
+],
+"type": "object"
+},
+"source": "native",
+"type": "PolicyCheck"
+},
+{
+"category": "ReadOnly",
+"description": "Return detailed metadata for a file path.",
+"mutable": false,
+"schema": {
+"properties": {
+"path": {
+"type": "string"
+}
+},
+"required": [
+"path"
+],
+"type": "object"
+},
+"source": "native",
+"type": "FileInfo"
+},
+{
+"category": "ReadOnly",
+"description": "Compute a checksum of a file.",
+"mutable": false,
+"schema": {
+"properties": {
+"algorithm": {
+"type": "string"
+},
+"path": {
+"type": "string"
+}
+},
+"required": [
+"path"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Checksum"
+},
+{
+"category": "ReadOnly",
+"description": "List running processes (reads /proc on Linux).",
+"mutable": false,
+"schema": {
+"properties": {
+"filter": {
+"type": "string"
+}
+},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "ListProcesses"
+},
+{
+"category": "Network",
+"description": "Check if a TCP port is open. `host` defaults to `127.0.0.1` since",
+"mutable": true,
+"schema": {
+"properties": {
+"host": {
+"type": "string"
+},
+"port": {
+"type": "integer"
+},
+"timeout_secs": {
+"type": "integer"
+}
+},
+"required": [
+"port"
+],
+"type": "object"
+},
+"source": "native",
+"type": "PortCheck"
+},
+{
+"category": "Network",
+"description": "Resolve a hostname to its IP addresses.",
+"mutable": true,
+"schema": {
+"properties": {
+"hostname": {
+"type": "string"
+}
+},
+"required": [
+"hostname"
+],
+"type": "object"
+},
+"source": "native",
+"type": "DnsLookup"
+},
+{
+"category": "FsWrite",
+"description": "Persist a key/value pair in project memory (~/.x0ne/memory/).",
+"mutable": true,
+"schema": {
+"properties": {
+"key": {
+"type": "string"
+},
+"namespace": {
+"type": "string"
+},
+"value": {
+"type": "any"
+}
+},
+"required": [
+"key",
+"value"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Remember"
+},
+{
+"category": "ReadOnly",
+"description": "Recall a previously stored memory by exact key.",
+"mutable": false,
+"schema": {
+"properties": {
+"key": {
+"type": "string"
+},
+"namespace": {
+"type": "string"
+}
+},
+"required": [
+"key"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Recall"
+},
+{
+"category": "Destructive",
+"description": "Delete a memory entry by key.",
+"mutable": true,
+"schema": {
+"properties": {
+"key": {
+"type": "string"
+},
+"namespace": {
+"type": "string"
+}
+},
+"required": [
+"key"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Forget"
+},
+{
+"category": "ReadOnly",
+"description": "List all stored memory keys in a namespace.",
+"mutable": false,
+"schema": {
+"properties": {
+"namespace": {
+"type": "string"
+}
+},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "ListMemory"
+},
+{
+"category": "ReadOnly",
+"description": "Structured diff: compare two strings or files and return line-by-line changes.",
+"mutable": false,
+"schema": {
+"properties": {
+"a": {
+"type": "string"
+},
+"b": {
+"type": "string"
+},
+"context_lines": {
+"type": "integer"
+},
+"files": {
+"type": "boolean"
+}
+},
+"required": [
+"a",
+"b"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Diff"
+},
+{
+"category": "Composite",
+"description": "Simulate: dry-run an Action (or nested Pipeline / Try / SafeChange / If)",
+"mutable": true,
+"schema": {
+"properties": {
+"explain": {
+"type": "boolean"
+},
+"target": {
+"type": "any"
+}
+},
+"required": [
+"target"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Simulate"
+},
+{
+"category": "Meta",
+"description": "Structured validation: check a value against JSON schema, regex pattern, or type.",
+"mutable": false,
+"schema": {
+"properties": {
+"check": {
+"type": "string"
+},
+"expect": {
+"type": "any"
+},
+"value": {
+"type": "any"
+}
+},
+"required": [
+"value",
+"check"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Validate"
+},
+{
+"category": "Meta",
+"description": "Generate cryptographically random bytes.",
+"mutable": false,
+"schema": {
+"properties": {
+"count": {
+"type": "integer"
+},
+"encoding": {
+"type": "string"
+}
+},
+"required": [
+"count"
+],
+"type": "object"
+},
+"source": "native",
+"type": "RandomBytes"
+},
+{
+"category": "Desktop",
+"description": "Take a screenshot of the desktop or a region.",
+"mutable": true,
+"schema": {
+"properties": {
+"output": {
+"type": "string"
+},
+"region": {
+"type": "string"
+}
+},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "Screenshot"
+},
+{
+"category": "Desktop",
+"description": "Get the Sway window tree as a flattened list.",
+"mutable": true,
+"schema": {
+"properties": {},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "GetWindowTree"
+},
+{
+"category": "Desktop",
+"description": "Get the currently focused window.",
+"mutable": true,
+"schema": {
+"properties": {},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "GetFocusedWindow"
+},
+{
+"category": "Desktop",
+"description": "Move the mouse pointer to an absolute position.",
+"mutable": true,
+"schema": {
+"properties": {
+"x": {
+"type": "integer"
+},
+"y": {
+"type": "integer"
+}
+},
+"required": [
+"x",
+"y"
+],
+"type": "object"
+},
+"source": "native",
+"type": "MoveMouse"
+},
+{
+"category": "Desktop",
+"description": "Click a mouse button (optionally moving to x,y first).",
+"mutable": true,
+"schema": {
+"properties": {
+"button": {
+"type": "string"
+},
+"x": {
+"type": "integer"
+},
+"y": {
+"type": "integer"
+}
+},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "Click"
+},
+{
+"category": "Desktop",
+"description": "Double-click (optionally moving to x,y first).",
+"mutable": true,
+"schema": {
+"properties": {
+"x": {
+"type": "integer"
+},
+"y": {
+"type": "integer"
+}
+},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "DoubleClick"
+},
+{
+"category": "Desktop",
+"description": "Scroll the mouse wheel.",
+"mutable": true,
+"schema": {
+"properties": {
+"amount": {
+"type": "integer"
+},
+"direction": {
+"type": "string"
+}
+},
+"required": [
+"direction"
+],
+"type": "object"
+},
+"source": "native",
+"type": "Scroll"
+},
+{
+"category": "Desktop",
+"description": "Type text at the current cursor position.",
+"mutable": true,
+"schema": {
+"properties": {
+"text": {
+"type": "string"
+}
+},
+"required": [
+"text"
+],
+"type": "object"
+},
+"source": "native",
+"type": "TypeText"
+},
+{
+"category": "Desktop",
+"description": "Press a single key by name (e.g. \"Return\", \"Escape\", \"Tab\").",
+"mutable": true,
+"schema": {
+"properties": {
+"key": {
+"type": "string"
+}
+},
+"required": [
+"key"
+],
+"type": "object"
+},
+"source": "native",
+"type": "PressKey"
+},
+{
+"category": "Desktop",
+"description": "Press a key combination (e.g. [\"ctrl\", \"s\"]).",
+"mutable": true,
+"schema": {
+"properties": {
+"keys": {
+"type": "array"
+}
+},
+"required": [
+"keys"
+],
+"type": "object"
+},
+"source": "native",
+"type": "PressKeyCombination"
+},
+{
+"category": "Desktop",
+"description": "Focus a window by title or app_id substring.",
+"mutable": true,
+"schema": {
+"properties": {
+"match_str": {
+"type": "string"
+}
+},
+"required": [
+"match_str"
+],
+"type": "object"
+},
+"source": "native",
+"type": "FocusWindow"
+},
+{
+"category": "Desktop",
+"description": "Send a desktop notification.",
+"mutable": true,
+"schema": {
+"properties": {
+"body": {
+"type": "string"
+},
+"title": {
+"type": "string"
+},
+"urgency": {
+"type": "string"
+}
+},
+"required": [
+"title",
+"body"
+],
+"type": "object"
+},
+"source": "native",
+"type": "SendNotification"
+},
+{
+"category": "Desktop",
+"description": "Read the Wayland clipboard.",
+"mutable": true,
+"schema": {
+"properties": {},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "GetClipboard"
+},
+{
+"category": "Desktop",
+"description": "Write to the Wayland clipboard.",
+"mutable": true,
+"schema": {
+"properties": {
+"content": {
+"type": "string"
+}
+},
+"required": [
+"content"
+],
+"type": "object"
+},
+"source": "native",
+"type": "SetClipboard"
+},
+{
+"category": "FsWrite",
+"description": "Define a reusable composite primitive from a pipeline of existing actions.",
+"mutable": true,
+"schema": {
+"properties": {
+"description": {
+"type": "string"
+},
+"ephemeral": {
+"type": "boolean"
+},
+"name": {
+"type": "string"
+},
+"params": {
+"type": "any"
+},
+"steps": {
+"type": "array"
+}
+},
+"required": [
+"name",
+"steps"
+],
+"type": "object"
+},
+"source": "native",
+"type": "DefinePrimitive"
+},
+{
+"category": "Meta",
+"description": "Call a previously defined composite primitive.",
+"mutable": false,
+"schema": {
+"properties": {
+"args": {
+"type": "any"
+},
+"name": {
+"type": "string"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "CallPrimitive"
+},
+{
+"category": "Meta",
+"description": "List all defined composite primitives.",
+"mutable": false,
+"schema": {
+"properties": {},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "ListCustomPrimitives"
+},
+{
+"category": "Destructive",
+"description": "Delete a composite primitive.",
+"mutable": true,
+"schema": {
+"properties": {
+"name": {
+"type": "string"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "DeletePrimitive"
+},
+{
+"category": "FsWrite",
+"description": "Define a scripted function. Validates the source (compile-only) and",
+"mutable": true,
+"schema": {
+"properties": {
+"description": {
+"type": "string"
+},
+"name": {
+"type": "string"
+},
+"params": {
+"type": "array"
+},
+"returns": {
+"type": "string"
+},
+"source": {
+"type": "string"
+},
+"tier": {
+"type": "string"
+}
+},
+"required": [
+"name",
+"source"
+],
+"type": "object"
+},
+"source": "native",
+"type": "DefineFunction"
+},
+{
+"category": "Meta",
+"description": "Invoke a previously registered scripted function. Args are passed",
+"mutable": false,
+"schema": {
+"properties": {
+"args": {
+"type": "array"
+},
+"name": {
+"type": "string"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "CallFunction"
+},
+{
+"category": "Meta",
+"description": "List every defined scripted function.",
+"mutable": false,
+"schema": {
+"properties": {},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "ListFunctions"
+},
+{
+"category": "Destructive",
+"description": "Remove a scripted function by name.",
+"mutable": true,
+"schema": {
+"properties": {
+"name": {
+"type": "string"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "DeleteFunction"
+},
+{
+"category": "ReadOnly",
+"description": "Preview one asm-ai program. X0NE compiles it, derives the files it can",
+"mutable": false,
+"schema": {
+"properties": {
+"source": {
+"type": "string"
+}
+},
+"required": [
+"source"
+],
+"type": "object"
+},
+"source": "native",
+"type": "PreviewProgram"
+},
+{
+"category": "FsWrite",
+"description": "Apply the program that was previewed. The runtime commits the",
+"mutable": true,
+"schema": {
+"properties": {
+"source": {
+"type": "string"
+}
+},
+"required": [
+"source"
+],
+"type": "object"
+},
+"source": "native",
+"type": "RunProgram"
+},
+{
+"category": "Network",
+"description": "Call an LLM endpoint (Ollama or OpenAI-compatible) and return the response.",
+"mutable": true,
+"schema": {
+"properties": {
+"auth": {
+"type": "string"
+},
+"endpoint": {
+"type": "string"
+},
+"max_tokens": {
+"type": "integer"
+},
+"model": {
+"type": "string"
+},
+"prompt": {
+"type": "string"
+},
+"system": {
+"type": "string"
+},
+"temperature": {
+"type": "integer"
+}
+},
+"required": [
+"endpoint",
+"model",
+"prompt"
+],
+"type": "object"
+},
+"source": "native",
+"type": "LlmCall"
+},
+{
+"category": "Network",
+"description": "Manage Ollama models (list, pull, create, delete, show).",
+"mutable": true,
+"schema": {
+"properties": {
+"auth": {
+"type": "string"
+},
+"endpoint": {
+"type": "string"
+},
+"model": {
+"type": "string"
+},
+"modelfile": {
+"type": "string"
+},
+"operation": {
+"type": "string"
+}
+},
+"required": [
+"endpoint",
+"operation"
+],
+"type": "object"
+},
+"source": "native",
+"type": "OllamaApi"
+},
+{
+"category": "Network",
+"description": "Generate a JSONL training dataset using an LLM.",
+"mutable": true,
+"schema": {
+"properties": {
+"count": {
+"type": "integer"
+},
+"endpoint": {
+"type": "string"
+},
+"model": {
+"type": "string"
+},
+"output": {
+"type": "string"
+},
+"style": {
+"type": "string"
+},
+"topic": {
+"type": "string"
+}
+},
+"required": [
+"endpoint",
+"model",
+"topic",
+"output"
+],
+"type": "object"
+},
+"source": "native",
+"type": "DatasetGenerate"
+},
+{
+"category": "ProcessSpawn",
+"description": "Extract text from a document (PDF, video, audio, image) and optionally",
+"mutable": true,
+"schema": {
+"properties": {
+"chunk_size": {
+"type": "integer"
+},
+"format": {
+"type": "string"
+},
+"input": {
+"type": "string"
+},
+"llm_endpoint": {
+"type": "string"
+},
+"llm_model": {
+"type": "string"
+},
+"output": {
+"type": "string"
+}
+},
+"required": [
+"input",
+"output"
+],
+"type": "object"
+},
+"source": "native",
+"type": "DocumentExtract"
+},
+{
+"category": "Network",
+"description": "Multi-turn chat with Ollama models, with optional vision (images).",
+"mutable": true,
+"schema": {
+"properties": {
+"auth": {
+"type": "string"
+},
+"endpoint": {
+"type": "string"
+},
+"max_tokens": {
+"type": "integer"
+},
+"messages": {
+"type": "array"
+},
+"model": {
+"type": "string"
+},
+"temperature": {
+"type": "integer"
+}
+},
+"required": [
+"endpoint",
+"model",
+"messages"
+],
+"type": "object"
+},
+"source": "native",
+"type": "OllamaChat"
+},
+{
+"category": "FsWrite",
+"description": "Allocate a fresh artifact \u2014 a self-contained directory served at",
+"mutable": true,
+"schema": {
+"properties": {
+"kind": {
+"type": "string"
+},
+"name": {
+"type": "string"
+},
+"persistent": {
+"type": "boolean"
+},
+"session_id": {
+"type": "string"
+}
+},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "ArtifactCreate"
+},
+{
+"category": "ReadOnly",
+"description": "List every known artifact (ephemeral + saved + running) with state, age,",
+"mutable": false,
+"schema": {
+"properties": {},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "ArtifactList"
+},
+{
+"category": "ProcessSpawn",
+"description": "Attach a long-running service to a `Service` artifact and start it.",
+"mutable": true,
+"schema": {
+"properties": {
+"command": {
+"type": "string"
+},
+"env": {
+"type": "object"
+},
+"id": {
+"type": "string"
+},
+"port": {
+"type": "integer"
+}
+},
+"required": [
+"id",
+"command"
+],
+"type": "object"
+},
+"source": "native",
+"type": "ArtifactServe"
+},
+{
+"category": "FsWrite",
+"description": "Promote an ephemeral artifact to the persistent (`saved/`) store. The",
+"mutable": true,
+"schema": {
+"properties": {
+"id": {
+"type": "string"
+},
+"name": {
+"type": "string"
+}
+},
+"required": [
+"id"
+],
+"type": "object"
+},
+"source": "native",
+"type": "ArtifactSave"
+},
+{
+"category": "Destructive",
+"description": "Stop the backing service of a `Service` artifact without deleting files.",
+"mutable": true,
+"schema": {
+"properties": {
+"id": {
+"type": "string"
+}
+},
+"required": [
+"id"
+],
+"type": "object"
+},
+"source": "native",
+"type": "ArtifactStop"
+},
+{
+"category": "Destructive",
+"description": "Permanently remove a artifact: stop its service, delete its files, drop",
+"mutable": true,
+"schema": {
+"properties": {
+"force": {
+"type": "boolean"
+},
+"id": {
+"type": "string"
+}
+},
+"required": [
+"id"
+],
+"type": "object"
+},
+"source": "native",
+"type": "ArtifactDestroy"
+},
+{
+"category": "Meta",
+"description": "Enumerate the runtime's action vocabulary.",
+"mutable": false,
+"schema": {
+"properties": {},
+"required": [],
+"type": "object"
+},
+"source": "native",
+"type": "ListActions"
+},
+{
+"category": "Meta",
+"description": "Describe one action: its summary, its fields, and its side-effect class.",
+"mutable": false,
+"schema": {
+"properties": {
+"name": {
+"type": "string"
+}
+},
+"required": [
+"name"
+],
+"type": "object"
+},
+"source": "native",
+"type": "DescribeAction"
+},
+{
+"category": "Meta",
+"description": "Orchestrator-owned UI action \u2014 accepted here ONLY so it can",
+"mutable": false,
+"schema": {
+"properties": {
+"payload": {
+"type": "any"
+}
+},
+"required": [
+"payload"
+],
+"type": "object"
+},
+"source": "native",
+"type": "PaintBadge"
+}
+]

@@ -1,0 +1,17 @@
+[package]
+name = "x0ne-cloud"
+description = "X0NE's pure cloud-cost + GPU model: parse gcloud/nvidia-smi output, price resources, compute burn rate, and decide idle-GPU waste. Zero I/O."
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints]
+workspace = true

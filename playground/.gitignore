@@ -1,0 +1,27 @@
+*/target/
+
+# The 07 fixture needs its .log and .bak files TRACKED — the root .gitignore
+# drops them as build noise, which silently shipped that exercise with four of
+# its seven files missing. On a fresh clone `check.sh` then reported the
+# protected files as "deleted" before the model had touched anything.
+# Negation works here because the parent directory is not itself ignored.
+!07-gated-delete/workspace/*.log
+!07-gated-delete/workspace/*.bak
+
+# The reset marker used by the journal-reading graders (08–13) to tell the
+# current attempt apart from earlier ones. Transient, recreated by reset.sh.
+.reset-stamp
+
+# What the model writes during 08–13. The `.gitkeep` in each `out/` is tracked
+# so the directory survives a clone; everything else the model drops there is
+# its answer, and reset.sh clears it.
+*/out/*
+!*/out/.gitkeep
+
+# Exercise 18 needs a link out of the tree. The published tree carries no symlink, so reset.sh
+# creates it.
+18-symlink-escape/config.link
+
+# Python bytecode caches from running the graders / fixtures.
+__pycache__/
+*.pyc

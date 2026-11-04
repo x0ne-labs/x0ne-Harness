@@ -1,0 +1,46 @@
+# x0ne-orchestrator config for the PLAYGROUND — read when X0NE is started from
+# this directory (project-local config, `Config::find_and_load`). The LLM
+# section always comes from your own config: nothing about models or keys
+# lives here.
+#
+# A project config sets display keys only (workspace trust). This one
+# needs more, so it takes effect only after YOU add one line to your own
+# config (`~/.x0ne/config.toml`, or `~/.config/x0ne-orchestrator/config.toml`
+# if you have that one), with the absolute path of this directory:
+#
+#     [project_trust]
+#     privileged = ["~/path/to/x0ne-Harness/playground"]
+#
+# Then, once you answer yes to the trust question at launch (asked again
+# whenever this file changes), it applies in full. Only this exact directory,
+# not its subdirectories; a project file cannot add itself to that list.
+#
+#     cd playground && x0ne          # then /playground, or /playground 16
+#
+# What it sets, once privileged:
+#
+#   [bridge] runtime_config  → the runtime gets `playground/x0ne-runtime.toml`
+#                              (read/write inside `.`, dev commands, no shell)
+#   [trust]  roots = ["."]   → the human gate is DISPENSED for what stays
+#                              inside this directory: no « allow once » per
+#                              write, per command, per delete. Never for the
+#                              network, the desktop, Incus, snapshot restore or
+#                              delete, or a composite one child of which steps
+#                              outside (`agent/trust.rs`). Sub-agents do not
+#                              inherit it. The CLI banner and the TUI header say
+#                              « trust: . » while it is in force.
+#
+# Owner request 2026-08-17: "free rein, but only inside this directory".
+
+[bridge]
+mode = "stdio"
+runtime_config = "x0ne-runtime.toml"
+
+[trust]
+roots = ["."]
+
+[cost]
+# No « Paused after N consecutive actions » here: a 19-exercise run is one
+# turn. The stationarity breaker, the failure ceilings and (if you set one)
+# budget_usd_limit still stop a runaway.
+max_consecutive_actions = 0

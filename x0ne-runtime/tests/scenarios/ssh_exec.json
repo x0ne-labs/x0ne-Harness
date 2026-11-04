@@ -1,0 +1,87 @@
+[
+  {
+    "name": "ssh_exec_rejects_empty_host",
+    "description": "Empty host must be caught at validation, never reach the ssh client",
+    "action": {
+      "type": "SshExec",
+      "host": "  ",
+      "command": "uptime"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "ssh_exec_rejects_empty_command",
+    "description": "Empty command must fail at validation",
+    "action": {
+      "type": "SshExec",
+      "host": "example.com",
+      "command": ""
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "ssh_exec_rejects_shell_pipeline_in_command",
+    "description": "Shell metacharacters in `command` are rejected — use sh -c for pipelines",
+    "action": {
+      "type": "SshExec",
+      "host": "example.com",
+      "command": "ls | grep foo"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "ssh_exec_rejects_redirection_in_command",
+    "description": "I/O redirection (>) in `command` is rejected for the same reason",
+    "action": {
+      "type": "SshExec",
+      "host": "example.com",
+      "command": "echo hi > /tmp/x"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "ssh_exec_rejects_command_substitution",
+    "description": "$(...) in `command` is rejected",
+    "action": {
+      "type": "SshExec",
+      "host": "example.com",
+      "command": "echo $(date)"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "ssh_exec_unreachable_host_returns_typed_failure",
+    "description": "An unreachable host returns a non-zero exit_code via CommandOutput, not an internal error. ConnectTimeout=15 means we wait at most ~15s for the connect.",
+    "action": {
+      "type": "SshExec",
+      "host": "192.0.2.1",
+      "command": "true",
+      "timeout_secs": 20,
+      "ssh_options": ["ConnectTimeout=2"]
+    },
+    "expect": {
+      "success": true,
+      "output_kind": "command_output"
+    }
+  }
+]

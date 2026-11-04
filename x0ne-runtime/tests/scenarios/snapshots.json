@@ -1,0 +1,150 @@
+[
+  {
+    "name": "create_snapshot_returns_metadata",
+    "description": "CreateSnapshot must return SnapshotCreated with the file count and bytes",
+    "action": {
+      "type": "CreateSnapshot",
+      "name": "snap_metadata_test",
+      "paths": ["{{TEST_DIR}}/hello.txt"]
+    },
+    "expect": {
+      "success": true,
+      "output_kind": "snapshot_created",
+      "output_contains": "snap_metadata_test",
+      "side_effects": [
+        { "kind": "snapshot_exists", "name": "snap_metadata_test" }
+      ]
+    }
+  },
+
+  {
+    "name": "create_then_modify_then_restore_round_trip",
+    "description": "End-to-end safety check: snapshot → mutate file → restore must recover the original bytes",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "CreateSnapshot", "name": "snap_round_trip", "paths": ["{{TEST_DIR}}/hello.txt"] },
+        { "type": "WriteFile",      "path": "{{TEST_DIR}}/hello.txt", "content": "TAMPERED" },
+        { "type": "RestoreSnapshot", "name": "snap_round_trip" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "step_success": [true, true, true] },
+      "side_effects": [
+        { "kind": "file_content", "path": "{{TEST_DIR}}/hello.txt", "equals": "hello from x0ne test fixtures" },
+        { "kind": "snapshot_exists", "name": "snap_round_trip" }
+      ]
+    }
+  },
+
+  {
+    "name": "delete_snapshot_removes_dir",
+    "description": "DeleteSnapshot must remove the snapshot dir from disk",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "CreateSnapshot", "name": "snap_to_delete", "paths": ["{{TEST_DIR}}/hello.txt"] },
+        { "type": "DeleteSnapshot", "name": "snap_to_delete" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "step_success": [true, true] },
+      "side_effects": [
+        { "kind": "snapshot_missing", "name": "snap_to_delete" }
+      ]
+    }
+  },
+
+  {
+    "name": "restore_unknown_snapshot_returns_not_found",
+    "description": "Restoring a snapshot that was never created must error with NotFound",
+    "action": {
+      "type": "RestoreSnapshot",
+      "name": "snap_does_not_exist_xyz"
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "not_found"
+    }
+  },
+
+  {
+    "name": "create_snapshot_with_invalid_name_rejected",
+    "description": "Snapshot names must be alphanumeric+_+- only — slashes must be refused",
+    "action": {
+      "type": "CreateSnapshot",
+      "name": "bad/name/with/slashes",
+      "paths": ["{{TEST_DIR}}/hello.txt"]
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "snapshot_error"
+    }
+  },
+
+  {
+    "name": "create_snapshot_with_overlong_name_rejected",
+    "description": "Snapshot names must be ≤64 chars — 65 must be refused",
+    "action": {
+      "type": "CreateSnapshot",
+      "name": "a_very_long_snapshot_name_that_definitely_exceeds_the_64_char_limit_yes",
+      "paths": ["{{TEST_DIR}}/hello.txt"]
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "snapshot_error"
+    }
+  },
+
+  {
+    "name": "create_duplicate_snapshot_rejected",
+    "description": "Creating a snapshot with an existing name must fail. T2: pipeline-level success is false because step 2 fails — per-step results still verify the failure.",
+    "action": {
+      "type": "Pipeline",
+      "stop_on_error": false,
+      "steps": [
+        { "type": "CreateSnapshot", "name": "snap_dupe", "paths": ["{{TEST_DIR}}/hello.txt"] },
+        { "type": "CreateSnapshot", "name": "snap_dupe", "paths": ["{{TEST_DIR}}/hello.txt"] }
+      ]
+    },
+    "expect": {
+      "success": false,
+      "pipeline": { "step_success": [true, false], "first_failed_index": 1 }
+    }
+  },
+
+  {
+    "name": "list_snapshots_includes_created_one",
+    "description": "After creating a snapshot, ListSnapshots must include it",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "CreateSnapshot", "name": "snap_listed", "paths": ["{{TEST_DIR}}/hello.txt"] },
+        { "type": "ListSnapshots" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "output_contains": "snap_listed"
+    }
+  },
+
+  {
+    "name": "snapshot_skips_nonexistent_files_silently",
+    "description": "When a path doesn't exist, the snapshot is created with 0 files (not an error)",
+    "action": {
+      "type": "CreateSnapshot",
+      "name": "snap_empty",
+      "paths": ["{{TEST_DIR}}/this_file_does_not_exist_yet.txt"]
+    },
+    "expect": {
+      "success": true,
+      "output_kind": "snapshot_created",
+      "side_effects": [
+        { "kind": "snapshot_exists", "name": "snap_empty" }
+      ]
+    }
+  }
+]

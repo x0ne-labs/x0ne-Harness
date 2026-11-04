@@ -1,0 +1,45 @@
+# x0ne-browser configuration — place this at ~/.x0ne/browser-tools.toml
+# (the example file lives in the crate root for reference).
+
+# "headed" or "headless". Headed = window visible (good for dev/debug).
+# Env override: X0NE_BROWSER_HEADLESS=1
+mode = "headed"
+
+# Max actions per minute. Past this, calls return `rate_limited` with retry_after.
+# Env override: X0NE_BROWSER_RATE_LIMIT=120
+rate_limit_per_minute = 60
+
+# Default timeout for navigation and wait_for, in milliseconds.
+default_timeout_ms = 10000
+
+# Hard caps. Returned errors past these.
+max_screenshot_bytes = 5242880   # 5 MB
+max_text_bytes       = 262144    # 256 KB
+
+# Default depth for browser_read_dom when no `depth` is given.
+default_dom_depth = 8
+
+# Keep the per-session Chromium profile after browser_close (for debug). Default false.
+keep_profile = false
+
+# Allowlist — hosts/origins the agent is allowed to navigate to and interact with.
+# Wildcards:
+#   *.example.com   — any subdomain (matches example.com too)
+#   :*              — any port
+#   data:*, about:* — scheme-only matches (safe data URLs + about:blank)
+allowlist = [
+  "http://127.0.0.1:*",
+  "http://localhost:*",
+  "http://[::1]:*",
+  "https://localhost:*",
+  "https://*.example.org",          # your own domains
+  "data:*",
+  "about:*",
+]
+
+# Optional override of the kill switch path. Default: ~/.x0ne/browser-tools.kill
+# kill_switch_path = "/run/user/1000/x0ne-browser.kill"
+
+# Optional override of where the per-session Chromium profile lives.
+# Default: ~/.x0ne/browser-profiles/<uuid>/
+# profile_root = "/tmp/x0ne-browser/"

@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# x0ne-vm session — give an agent its body in one command.
+#
+# What "ergonomic for the agent" means here, borrowed from x0ne-runtime:
+#   • single entry-point (no chaining doctor/setup/revive)
+#   • idempotent (re-running is always safe)
+#   • returns a rich state summary the agent can paste into context
+#   • self-healing: golden snapshot lets us reset to known-good in 2s
+#
+# Usage:
+#   bash scripts/x0ne-vm-session            → restore golden, brief the agent
+#   bash scripts/x0ne-vm-session --fresh    → take a NEW golden from current state
+#   bash scripts/x0ne-vm-session --no-watch → don't open the live watcher
+
+set -uo pipefail
+
+VM=${VM:-x0ne-firefox}
+SNAP=${SNAP:-golden}
+MCP_BIN="${X0NE_VM_MCP:-${CARGO_TARGET_DIR:-$(pwd)/target}/release/x0ne-vm-mcp}"
+WATCHER_PORT=${WATCHER_PORT:-7842}
+WATCHER_DIR=${WATCHER_DIR:-/tmp/x0ne-vm-watch-${VM}}
+OPEN_WATCH=1
+FRESH=0
+for a in "$@"; do
+    case "$a" in
+        --fresh) FRESH=1 ;;
+        --no-watch) OPEN_WATCH=0 ;;
+        --vm=*) VM=${a#--vm=} ;;
+        --help|-h) sed -n '2,12p' "$0"; exit 0 ;;
+    esac
+done
+
+C_OK="\033[32m✓\033[0m"; C_BAD="\033[31m✗\033[0m"; C_HDR="\033[1;36m"; R="\033[0m"
+
+mcp_tool() {
+    printf '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"%s","arguments":%s}}\n' \
+        "$1" "${2:-'{}'}" | "$MCP_BIN" 2>/dev/null
+}
+
+# ─── 1. preflight ──────────────────────────────────────────────────────────
+
+if [[ ! -x "$MCP_BIN" ]]; then
+    echo -e "$C_BAD x0ne-vm-mcp not built — run: cargo build -p x0ne-vm --release"
+    exit 1
+fi
+
+if ! virsh -c qemu:///session list --all --name | grep -qx "$VM"; then
+    echo -e "$C_BAD VM '$VM' not defined."
+    echo "    Set it up with:  bash scripts/x0ne-vm-firefox-setup.sh"
+    exit 1
+fi
+
+# ─── 2. ensure VM is running ───────────────────────────────────────────────
+
+state=$(virsh -c qemu:///session domstate "$VM" 2>/dev/null | tr -d '[:space:]')
+if [[ "$state" != "running" ]]; then
+    virsh -c qemu:///session start "$VM" >/dev/null 2>&1
+    sleep 3
+fi
+
+# ─── 3. golden snapshot — create or restore ────────────────────────────────
+
+HAS_SNAP=0
+if virsh -c qemu:///session snapshot-list "$VM" --name 2>/dev/null | grep -qx "$SNAP"; then
+    HAS_SNAP=1
+fi
+
+if (( FRESH )) || (( HAS_SNAP == 0 )); then
+    (( HAS_SNAP )) && virsh -c qemu:///session snapshot-delete "$VM" "$SNAP" >/dev/null 2>&1
+    virsh -c qemu:///session snapshot-create-as "$VM" "$SNAP" \
+        "fresh agent body" >/dev/null 2>&1 \
+        && echo -e "$C_OK created golden snapshot from current state"
+else
+    t0=$(date +%s%N)
+    if virsh -c qemu:///session snapshot-revert "$VM" "$SNAP" >/dev/null 2>&1; then
+        elapsed_ms=$(( ($(date +%s%N) - t0) / 1000000 ))
+        echo -e "$C_OK reverted to '$SNAP' snapshot in ${elapsed_ms}ms"
+    else
+        echo -e "$C_BAD snapshot-revert failed — running with current state"
+    fi
+fi
+
+# ─── 4. probe live state ───────────────────────────────────────────────────
+
+info_text=$(mcp_tool vm_info "{\"name\":\"$VM\"}" \
+    | python3 -c "import json,sys;d=json.loads(sys.stdin.read());print(d['result']['content'][0]['text'])" 2>/dev/null || true)
+display=$(echo "$info_text" | python3 -c "
+import json,sys
+try:
+    d=json.loads(sys.stdin.read())
+    print(f'{d.get(\"vcpu\",\"?\")} vcpu, {(d.get(\"max_mem_kib\",0)//1024)}MB RAM')
+except: pass
+")
+vnc_endpoint=$(echo "$info_text" | python3 -c "
+import json,sys
+try: print(json.loads(sys.stdin.read()).get('vnc_endpoint','?'))
+except: pass
+")
+
+# Take a screenshot so we can report dimensions
+shot_path=/tmp/x0ne-vm-session-${VM}.png
+mcp_tool vm_screenshot "{\"name\":\"$VM\"}" | TARGET="$shot_path" python3 -c "
+import json,sys,os,base64
+d=json.loads(sys.stdin.read())
+img=next((c for c in d.get('result',{}).get('content',[]) if c.get('type')=='image'),None)
+if img: open(os.environ['TARGET'],'wb').write(base64.b64decode(img['data']))
+" 2>/dev/null
+shot_dims=$(python3 -c "
+import struct
+try:
+    with open('$shot_path','rb') as f:
+        f.read(16); w,h=struct.unpack('>II',f.read(8))
+        print(f'{w}x{h}')
+except: print('?')
+")
+
+# ─── 5. start watcher if not already up ────────────────────────────────────
+
+if (( OPEN_WATCH )); then
+    if ss -tlnp 2>/dev/null | grep -q ":${WATCHER_PORT}\b"; then
+        echo -e "$C_OK live watcher already running at http://localhost:${WATCHER_PORT}/"
+    else
+        nohup env VM_NAME="$VM" PORT="$WATCHER_PORT" POLL_MS=1000 WATCH_DIR="$WATCHER_DIR" \
+            bash "$(dirname "$0")/x0ne-vm-watch.sh" \
+            > /tmp/x0ne-vm-watcher.log 2>&1 &
+        disown
+        sleep 1
+        echo -e "$C_OK live watcher started at http://localhost:${WATCHER_PORT}/"
+    fi
+fi
+
+# ─── 6. agent brief ─────────────────────────────────────────────────────────
+
+cat <<EOF
+
+${C_HDR}═══════════════════ AGENT BODY READY ═══════════════════${R}
+
+  VM:               ${VM}
+  Display:          ${shot_dims}     (resources: ${display})
+  VNC endpoint:     ${vnc_endpoint}
+  Live watcher:     http://localhost:${WATCHER_PORT}/
+  Latest capture:   ${shot_path}
+
+${C_HDR}─── how the agent drives this body ────────────────────${R}
+
+  via MCP stdio (recommended — bind in any MCP client):
+    "command": "x0ne-vm-mcp"
+
+  via CLI shortcuts (this shell):
+    x0ne-vm shot                         # screenshot
+    x0ne-vm click <x> <y>                # mouse click
+    x0ne-vm type "<text>"                # keyboard input
+    x0ne-vm key  <chord>                 # e.g. ctrl+l, return
+    x0ne-vm scroll up|down [N]
+    x0ne-vm click-text "<text>"          # OCR-based (needs tesseract)
+    x0ne-vm cursor                       # last-known cursor pos
+    x0ne-vm shell                        # interactive REPL
+
+${C_HDR}─── reset / cleanup ────────────────────────────────────${R}
+
+  bash scripts/x0ne-vm-session           # back to golden in ~ms (this)
+  bash scripts/x0ne-vm-session --fresh   # save current state as new golden
+  bash scripts/x0ne-vm-doctor.sh         # diagnose anything weird
+
+${C_HDR}═════════════════════════════════════════════════════════${R}
+
+EOF

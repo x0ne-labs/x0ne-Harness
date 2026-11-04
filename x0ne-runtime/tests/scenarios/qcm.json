@@ -1,0 +1,260 @@
+[
+  {
+    "name": "qcm_picks_first_choice",
+    "description": "Numeric '1' selects the first choice — index=0, answer=label",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "Pick a cipher",
+      "choices": ["AES-256-GCM", "ChaCha20-Poly1305", "RSA-OAEP"]
+    },
+    "human_responses": ["1"],
+    "expect": {
+      "success": true,
+      "output_kind": "human_choice",
+      "human": { "choice_index": 0, "answer": "AES-256-GCM", "skipped": false, "other": false }
+    }
+  },
+
+  {
+    "name": "qcm_picks_middle_choice",
+    "description": "Numeric '2' selects the second choice (index=1)",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "Pick one",
+      "choices": ["alpha", "beta", "gamma"]
+    },
+    "human_responses": ["2"],
+    "expect": {
+      "success": true,
+      "human": { "choice_index": 1, "answer": "beta", "skipped": false, "other": false }
+    }
+  },
+
+  {
+    "name": "qcm_picks_last_choice",
+    "description": "Numeric '3' selects the last choice in a 3-item list (index=2)",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "Pick last",
+      "choices": ["a", "b", "c"]
+    },
+    "human_responses": ["3"],
+    "expect": {
+      "success": true,
+      "human": { "choice_index": 2, "answer": "c" }
+    }
+  },
+
+  {
+    "name": "qcm_skip_when_allowed",
+    "description": "'s' produces skipped=true with no index/answer when allow_skip=true",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "Optional",
+      "choices": ["yes", "no"],
+      "allow_skip": true
+    },
+    "human_responses": ["s"],
+    "expect": {
+      "success": true,
+      "output_kind": "human_choice",
+      "human": { "skipped": true, "other": false }
+    }
+  },
+
+  {
+    "name": "qcm_skip_full_word",
+    "description": "Full word 'skip' is also accepted",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "Optional",
+      "choices": ["yes", "no"],
+      "allow_skip": true
+    },
+    "human_responses": ["skip"],
+    "expect": {
+      "success": true,
+      "human": { "skipped": true }
+    }
+  },
+
+  {
+    "name": "qcm_skip_rejected_when_not_allowed",
+    "description": "'s' is rejected when allow_skip=false — must error with InvalidInput",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "?",
+      "choices": ["a", "b"]
+    },
+    "human_responses": ["s"],
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "qcm_other_with_freeform_value",
+    "description": "'o:my custom value' yields other=true with the typed text in answer",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "Pick or specify",
+      "choices": ["JWT", "OAuth2"],
+      "allow_other": true
+    },
+    "human_responses": ["o:Custom OIDC provider"],
+    "expect": {
+      "success": true,
+      "output_kind": "human_choice",
+      "human": { "other": true, "skipped": false, "answer": "Custom OIDC provider" }
+    }
+  },
+
+  {
+    "name": "qcm_other_long_form_prefix",
+    "description": "'other:foo' is also accepted as the other-with-value shorthand",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "Pick or specify",
+      "choices": ["A", "B"],
+      "allow_other": true
+    },
+    "human_responses": ["other:bar baz"],
+    "expect": {
+      "success": true,
+      "human": { "other": true, "answer": "bar baz" }
+    }
+  },
+
+  {
+    "name": "qcm_other_rejected_when_not_allowed",
+    "description": "'o:something' is rejected when allow_other=false",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "?",
+      "choices": ["a", "b"]
+    },
+    "human_responses": ["o:nope"],
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "qcm_supports_both_skip_and_other",
+    "description": "Skip and Other can coexist — operator picks Other and gets a freeform value",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "Pick, skip, or specify",
+      "choices": ["red", "green", "blue"],
+      "allow_skip": true,
+      "allow_other": true
+    },
+    "human_responses": ["o:purple"],
+    "expect": {
+      "success": true,
+      "human": { "other": true, "skipped": false, "answer": "purple" }
+    }
+  },
+
+  {
+    "name": "qcm_out_of_range_rejected",
+    "description": "'5' on a 3-item list errors with InvalidInput, no choice recorded",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "?",
+      "choices": ["a", "b", "c"]
+    },
+    "human_responses": ["5"],
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "qcm_zero_is_rejected",
+    "description": "'0' is out of the 1-based range and must be rejected",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "?",
+      "choices": ["a", "b"]
+    },
+    "human_responses": ["0"],
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "qcm_garbage_rejected",
+    "description": "Non-numeric, non-keyword input is rejected as InvalidInput",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "?",
+      "choices": ["a", "b"]
+    },
+    "human_responses": ["maybe"],
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "qcm_empty_choices_rejected_at_validation",
+    "description": "An empty choices array is rejected before any prompt is shown",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "no choices?",
+      "choices": []
+    },
+    "human_responses": [],
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "qcm_in_pipeline_routes_to_human_layer",
+    "description": "AskMultipleChoice can run inside a Pipeline alongside other actions",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/qcm_pipeline.txt", "content": "before-qcm" },
+        {
+          "type": "AskMultipleChoice",
+          "question": "Continue?",
+          "choices": ["yes", "no"]
+        }
+      ]
+    },
+    "human_responses": ["1"],
+    "expect": {
+      "success": true,
+      "pipeline": { "steps_total": 2, "steps_completed": 2, "step_success": [true, true] },
+      "output_contains": "human_choice",
+      "side_effects": [
+        { "kind": "file_content", "path": "{{TEST_DIR}}/qcm_pipeline.txt", "equals": "before-qcm" }
+      ]
+    }
+  },
+
+  {
+    "name": "qcm_no_response_fails_loudly",
+    "description": "Empty queue must error rather than block on real stdin",
+    "action": {
+      "type": "AskMultipleChoice",
+      "question": "?",
+      "choices": ["a", "b"]
+    },
+    "human_responses": [],
+    "expect": {
+      "success": false,
+      "error_kind": "internal"
+    }
+  }
+]

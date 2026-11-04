@@ -1,0 +1,16 @@
+[package]
+name = "x0ne-pointer"
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Deterministic pointer trajectories: turn a start and an end into the sequence of mousemove events a real pointer would produce. Pure — no I/O, no clock, no randomness the caller cannot reproduce. Shared by x0ne-browser (CDP) and x0ne-vm (RFB/wlrctl) so both drive a pointer the same way."
+
+[dependencies]
+serde = { workspace = true }
+
+[lints]
+workspace = true

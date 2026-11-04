@@ -1,0 +1,115 @@
+# x0ne-runtime configuration — hardened read-only profile for Claude Code MCP
+#
+# Use this when you want to give Claude Code (or any other MCP client) the
+# 80+ X0NE observability primitives WITHOUT giving it write/exec capabilities.
+# Pair it with:
+#
+#   {
+#     "mcpServers": {
+#       "x0ne-readonly": {
+#         "command": "x0ne-runtime",
+#         "args": ["--mode", "mcp", "--config", "/path/to/this/file.toml"]
+#       }
+#     }
+#   }
+
+[runtime]
+mode = "mcp"
+
+[policy]
+# SECURITY: "readonly", not "auto". `auto` means "enforce the lists, the
+# ORCHESTRATOR owns the human gate" — but on a stdio MCP pipe there is no
+# orchestrator and no human, so `auto` would mean no gate at all: nothing ever
+# yields RequireConfirmation and the fail-closed refusal in mcp/server.rs
+# becomes unreachable. `readonly` refuses every modifying action outright,
+# which is this profile's entire intent anyway. The runtime now refuses to
+# start `--mode mcp` under `auto` (config.rs, check_headless_posture), so this
+# line is also what lets this profile boot.
+mode = "readonly"
+default_effect = "deny"
+max_read_bytes = 1048576
+max_list_entries = 500
+
+# No commands allowed. The agent must use typed primitives only.
+# Empty = DENY ALL commands (2026-08-15 semantics, aligned with the path lists).
+allowed_commands = []
+
+# Read paths: the user's home (read-only), excluding obvious secret stores.
+allowed_read_paths = ["~"]
+
+# Zero write permissions.
+# Empty = DENY ALL writes (Aug 2026 semantics). This is exactly the intent of
+# the readonly profile, which additionally disables every write action below.
+allowed_write_paths = []
+
+# Hard-deny patterns even within allowed_read_paths. The defaults of
+# x0ne-actions/src/deny_paths.rs (credential stores of x0ne, other agents,
+# forges and clouds) apply on top of this list, to every read and to every
+# file a search walks.
+deny_path_patterns = [
+    "**/.ssh/**", "**/.gnupg/**",
+    "**/*.key", "**/*.pem", "**/*.p12",
+    "**/.env", "**/.env.*",
+    "**/secrets/**", "**/credentials/**",
+    "**/.aws/**", "**/.config/gcloud/**",
+    "**/.docker/config.json",
+    "**/wallet*", "**/*.kdbx",
+    # Browser and mail profiles (cookies, saved logins) and npm tokens: bwrap
+    # hides them from commands, and a read under `~` must not reach them.
+    "**/.mozilla/**", "**/.thunderbird/**",
+    "**/.config/google-chrome/**", "**/.config/chromium/**",
+    "**/.config/BraveSoftware/**",
+    "**/Library/Application Support/Google/Chrome/**",
+    "**/Library/Application Support/Chromium/**",
+    "**/Library/Application Support/BraveSoftware/**",
+    "**/Library/Application Support/Firefox/**",
+    "**/Library/Thunderbird/**", "**/Library/Safari/**", "**/Library/Cookies/**",
+    "**/.npmrc",
+]
+
+[actions]
+# Reads only — explicitly enable what's safe.
+ReadFile = true
+FileInfo = true
+Checksum = true
+SearchCode = true
+ReadLogs = true
+
+# System reads. Not PII-free: ListProcesses returns the command line of every
+# process readable in /proc, which can name paths, hosts and users; arguments
+# that look like credentials are masked.
+ListProcesses = true
+PortCheck = true
+DnsLookup = true
+
+# Math / string / data — pure functions.
+
+# Snapshots / handles (read-only operations).
+ListSnapshots = true
+ListHandles = true
+CheckHandle = true
+
+# Meta — always allowed.
+ListActions = true
+DescribeAction = true
+PolicyCheck = true
+
+# Pipeline / Try / If come for free via the merged defaults
+# ([policy] action_defaults = "merge", which is the default).
+# Set action_defaults = "replace" above for strict whitelist mode if you
+# want to deny even those.
+
+# Everything else stays deny-by-default. Notably:
+#   - WriteFile, EditFile, AppendFile, ReplaceInFile  — disabled
+#   - RunCommand, RunInSandbox                         — disabled
+#   - CreateSnapshot, RestoreSnapshot, DeleteSnapshot  — disabled (no rollback game)
+#   - Desktop family (Click, TypeText, etc.)            — disabled
+#   - All network writes (FetchUrl POST, HttpRequest)   — disabled
+
+[snapshots]
+dir = "~/.x0ne/snapshots"
+max_snapshots = 0
+max_snapshot_size_mb = 0
+
+[desktop]
+enabled = false

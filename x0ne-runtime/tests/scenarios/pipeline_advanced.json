@@ -1,0 +1,251 @@
+[
+  {
+    "name": "pipeline_returns_pipeline_result_kind",
+    "description": "Even a trivial pipeline must return ActionOutput::PipelineResult, not a leaf output",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "ReadFile", "path": "{{TEST_DIR}}/hello.txt" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "output_kind": "pipeline_result",
+      "pipeline": { "steps_total": 1, "steps_completed": 1, "stopped_early": false, "step_success": [true] }
+    }
+  },
+
+  {
+    "name": "stop_on_error_truly_stops_at_failing_step",
+    "description": "With stop_on_error=true, step 2 must NOT run after step 1 fails. T2: pipeline-level success is false when any step fails or stopped_early=true.",
+    "action": {
+      "type": "Pipeline",
+      "stop_on_error": true,
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/p1_a.txt", "content": "step0" },
+        { "type": "ReadFile",  "path": "/tmp/x0ne-pipeline-does-not-exist-xyz-stop.txt" },
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/p1_c.txt", "content": "step2-should-not-run" }
+      ]
+    },
+    "expect": {
+      "success": false,
+      "pipeline": {
+        "steps_total": 3,
+        "steps_completed": 2,
+        "stopped_early": true,
+        "step_success": [true, false],
+        "first_failed_index": 1
+      },
+      "side_effects": [
+        { "kind": "path_exists",  "path": "{{TEST_DIR}}/p1_a.txt" },
+        { "kind": "path_missing", "path": "{{TEST_DIR}}/p1_c.txt" }
+      ]
+    }
+  },
+
+  {
+    "name": "no_stop_on_error_continues_through_failures",
+    "description": "With stop_on_error=false, all 3 steps must execute even if the middle one fails. T2: pipeline-level success is false whenever any step fails — even when execution completes.",
+    "action": {
+      "type": "Pipeline",
+      "stop_on_error": false,
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/p2_a.txt", "content": "step0" },
+        { "type": "ReadFile",  "path": "/tmp/x0ne-pipeline-does-not-exist-xyz-cont.txt" },
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/p2_c.txt", "content": "step2" }
+      ]
+    },
+    "expect": {
+      "success": false,
+      "pipeline": {
+        "steps_total": 3,
+        "steps_completed": 3,
+        "stopped_early": false,
+        "step_success": [true, false, true]
+      },
+      "side_effects": [
+        { "kind": "path_exists", "path": "{{TEST_DIR}}/p2_a.txt" },
+        { "kind": "path_exists", "path": "{{TEST_DIR}}/p2_c.txt" }
+      ]
+    }
+  },
+
+  {
+    "name": "parallel_pipeline_is_actually_concurrent",
+    "description": "3× python3 sleep(200ms) must finish in <450ms when parallel=true (sequential = ~600ms+) — Sleep removed in v0.3",
+    "action": {
+      "type": "Pipeline",
+      "parallel": true,
+      "steps": [
+        { "type": "RunCommand", "command": "python3", "args": ["-c", "import time; time.sleep(0.2)"] },
+        { "type": "RunCommand", "command": "python3", "args": ["-c", "import time; time.sleep(0.2)"] },
+        { "type": "RunCommand", "command": "python3", "args": ["-c", "import time; time.sleep(0.2)"] }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "steps_total": 3, "steps_completed": 3, "stopped_early": false, "step_success": [true, true, true] },
+      "min_duration_ms": 180,
+      "max_duration_ms": 450
+    }
+  },
+
+  {
+    "name": "sequential_pipeline_is_serial",
+    "description": "Same 3× python3 sleep(200ms) sequential must take ≥580ms — proves parallel test above is meaningful (Sleep removed in v0.3)",
+    "action": {
+      "type": "Pipeline",
+      "parallel": false,
+      "steps": [
+        { "type": "RunCommand", "command": "python3", "args": ["-c", "import time; time.sleep(0.2)"] },
+        { "type": "RunCommand", "command": "python3", "args": ["-c", "import time; time.sleep(0.2)"] },
+        { "type": "RunCommand", "command": "python3", "args": ["-c", "import time; time.sleep(0.2)"] }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "min_duration_ms": 580,
+      "max_duration_ms": 1500
+    }
+  },
+
+  {
+    "name": "snapshot_before_creates_snapshot_dir",
+    "description": "snapshot_before must produce a snapshot dir on disk that survives the pipeline",
+    "action": {
+      "type": "Pipeline",
+      "snapshot_before": "preflight_test_snap",
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/snap_target.txt", "content": "after-snapshot" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "steps_total": 1, "steps_completed": 1, "snapshot_present": true },
+      "side_effects": [
+        { "kind": "path_exists", "path": "{{TEST_DIR}}/snap_target.txt" },
+        { "kind": "snapshot_exists", "name": "preflight_test_snap" }
+      ]
+    }
+  },
+
+  {
+    "name": "snapshot_before_with_existing_target_creates_dir",
+    "description": "When the write target already exists, snapshot_before must capture it",
+    "action": {
+      "type": "Pipeline",
+      "snapshot_before": "preflight_existing",
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/hello.txt", "content": "modified by pipeline" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "snapshot_present": true },
+      "side_effects": [
+        { "kind": "snapshot_exists", "name": "preflight_existing" },
+        { "kind": "file_content", "path": "{{TEST_DIR}}/hello.txt", "equals": "modified by pipeline" }
+      ]
+    }
+  },
+
+  {
+    "name": "preflight_denies_pipeline_if_any_step_disallowed",
+    "description": "A single denied step must reject the entire pipeline before any side effect",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/preflight_ok.txt", "content": "ok" },
+        { "type": "WriteFile", "path": "/etc/x0ne_should_not_write.txt", "content": "nope" },
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/preflight_after.txt", "content": "should-not-be-written" }
+      ]
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied",
+      "side_effects": [
+        { "kind": "path_missing", "path": "{{TEST_DIR}}/preflight_ok.txt" },
+        { "kind": "path_missing", "path": "{{TEST_DIR}}/preflight_after.txt" }
+      ]
+    }
+  },
+
+  {
+    "name": "nested_pipeline_is_rejected",
+    "description": "Single-level Pipeline nesting is allowed (depth 0 → 1). Depth enforcement happens at execution time (max depth 3), not at the policy level.",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "Pipeline", "steps": [ { "type": "ReadFile", "path": "{{TEST_DIR}}/hello.txt" } ] }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": { "steps_total": 1, "steps_completed": 1, "stopped_early": false, "step_success": [true] }
+    }
+  },
+
+  {
+    "name": "pipeline_with_too_many_steps_is_rejected",
+    "description": "Hard cap is 20 steps — 21 must be rejected as InvalidInput. Every step is a valid, allowed, side-effect-free action, so the rejection can only come from the step-count guard.",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "ListHandles" }, { "type": "ListHandles" }, { "type": "ListHandles" },
+        { "type": "ListHandles" }, { "type": "ListHandles" }, { "type": "ListHandles" },
+        { "type": "ListHandles" }, { "type": "ListHandles" }, { "type": "ListHandles" },
+        { "type": "ListHandles" }, { "type": "ListHandles" }, { "type": "ListHandles" },
+        { "type": "ListHandles" }, { "type": "ListHandles" }, { "type": "ListHandles" },
+        { "type": "ListHandles" }, { "type": "ListHandles" }, { "type": "ListHandles" },
+        { "type": "ListHandles" }, { "type": "ListHandles" }, { "type": "ListHandles" }
+      ]
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+
+  {
+    "name": "all_steps_succeed_no_early_stop",
+    "description": "Healthy pipeline must report stopped_early=false and exact step counts",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/p4_a.txt", "content": "a" },
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/p4_b.txt", "content": "b" },
+        { "type": "ReadFile",  "path": "{{TEST_DIR}}/p4_a.txt" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": {
+        "steps_total": 3,
+        "steps_completed": 3,
+        "stopped_early": false,
+        "step_success": [true, true, true]
+      },
+      "side_effects": [
+        { "kind": "file_content", "path": "{{TEST_DIR}}/p4_a.txt", "equals": "a" },
+        { "kind": "file_content", "path": "{{TEST_DIR}}/p4_b.txt", "equals": "b" }
+      ]
+    }
+  },
+
+  {
+    "name": "pipeline_carries_step_outputs",
+    "description": "Each StepResult must carry its action_type field — verifies the output payload integrity",
+    "action": {
+      "type": "Pipeline",
+      "steps": [
+        { "type": "WriteFile", "path": "{{TEST_DIR}}/p5.txt", "content": "carry-output" },
+        { "type": "ReadFile",  "path": "{{TEST_DIR}}/p5.txt" }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "output_contains": "carry-output",
+      "pipeline": { "steps_total": 2, "steps_completed": 2 }
+    }
+  }
+]

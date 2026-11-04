@@ -1,0 +1,75 @@
+[package]
+name = "x0ne-code"
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "x0ne-code: Multi-LLM coding agent with sandboxed execution, policy engine, and multi-agent support"
+authors = ["x0ne"]
+readme = "README.md"
+
+[[bin]]
+name = "x0ne"
+path = "src/main.rs"
+
+[dependencies]
+# The orchestrator library — all agent logic, LLM, bridge, config
+x0ne-orchestrator = { path = "../x0ne-orchestrator" }
+# Pure cloud vocabulary: `x0ne cc` renders and plans from it (cc_plan).
+x0ne-cloud = { path = "../x0ne-cloud" }
+# `x0ne config inspect` (config_cmd.rs) loads the policy through the REAL
+# loader, `AppConfig::load`: a bare `toml::from_str` misses the `[actions]`
+# merge, dropped roots and the fail-closed unknown-key refusal.
+# The agent loop still links nothing (x0ne-orchestrator/Cargo.toml): this is
+# the CLI, outside any session, printing a policy file. No executor is built.
+x0ne-runtime = { path = "../x0ne-runtime" }
+# Action vocabulary: `all_type_names` / `action_meta` are generated at compile
+# time from the enum, so `config inspect` keeps no hand-copied list (hand
+# copies named removed actions for months).
+x0ne-actions = { path = "../x0ne-actions" }
+x0ne-audit   = { path = "../x0ne-audit" }
+# Same pattern engine as `PolicyEngine::new`: a `deny_path_patterns` entry that
+# does not compile is dropped there by a silent `filter_map(…ok())`, and the
+# operator believes a path is protected when it is not.
+glob.workspace = true
+
+# Workspace-shared
+tokio.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true
+chrono.workspace = true
+dirs.workspace = true
+async-trait.workspace = true
+
+# CLI-specific (interactive terminal, TUI, display)
+colored.workspace = true
+dotenvy.workspace = true
+rustyline.workspace = true
+indicatif.workspace = true
+
+[features]
+default = ["serve"]
+serve = ["x0ne-orchestrator/serve"]
+# `x0ne cc`: provisions billed GCP VMs. Off by default.
+cloud = []
+
+[dev-dependencies]
+tempfile.workspace = true
+# Test-only since 2026-10-05: production code in this crate encodes nothing.
+base64.workspace = true
+# Test-only: builds a synthetic verified TD Quote so the `x0ne cc` exit-status
+# test can construct a real `ProofBundle` without a VM. Not a runtime dep —
+# production code only ever receives one from the runner.
+x0ne-confidential.workspace = true
+# Test-only: `--tui` and `--matrix` driven in a pseudo-terminal, their
+# screen read back. Same versions as x0ne-orchestrator's, no new crate.
+portable-pty = "0.9"
+vt100 = "0.16"
+
+[lints]
+workspace = true

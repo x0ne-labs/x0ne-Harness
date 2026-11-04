@@ -1,0 +1,180 @@
+[
+  {
+    "name": "path_traversal_relative",
+    "description": "Path traversal with ../../etc/passwd — must be blocked by deny_path_patterns or path validation",
+    "action": { "type": "ReadFile", "path": "../../etc/passwd" },
+    "expect": {
+      "success": false
+    }
+  },
+  {
+    "name": "empty_string_path",
+    "description": "Empty string as file path",
+    "action": { "type": "ReadFile", "path": "" },
+    "expect": {
+      "success": false
+    }
+  },
+  {
+    "name": "nonexistent_file",
+    "description": "Read a file that does not exist",
+    "action": { "type": "ReadFile", "path": "/tmp/x0ne-scenario-nonexistent-file-12345.txt" },
+    "expect": {
+      "success": false
+    }
+  },
+  {
+    "name": "nonexistent_directory_stat",
+    "description": "FileInfo on a directory that does not exist — must fail with not_found (ListDir removed in v0.3)",
+    "action": { "type": "FileInfo", "path": "/tmp/x0ne-scenario-nonexistent-dir-12345" },
+    "expect": {
+      "success": false,
+      "error_kind": "not_found"
+    }
+  },
+  {
+    "name": "write_file_empty_content",
+    "description": "Write a file with empty string content — should succeed",
+    "action": { "type": "WriteFile", "path": "{{TEST_DIR}}/empty.txt", "content": "" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "run_command_empty_args",
+    "description": "RunCommand with an empty args array — should work fine",
+    "action": { "type": "RunCommand", "command": "echo", "args": [] },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "run_command_timeout_zero",
+    "description": "RunCommand with short timeout_secs=1 — should still complete quickly",
+    "action": { "type": "RunCommand", "command": "echo", "args": ["fast"], "timeout_secs": 1 },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "read_file_with_offset",
+    "description": "Read file skipping first N bytes",
+    "action": { "type": "ReadFile", "path": "{{TEST_DIR}}/hello.txt", "offset": 5 },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "checksum_nonexistent",
+    "description": "Checksum on a file that doesn't exist",
+    "action": { "type": "Checksum", "path": "/tmp/x0ne-scenario-nonexistent-checksum.bin" },
+    "expect": {
+      "success": false
+    }
+  },
+  {
+    "name": "port_check_refuses_loopback",
+    "description": "PortCheck classifies its target like any outbound request; loopback needs X0NE_ALLOW_LOOPBACK (set by the sandbox config). Unguarded it was an internal port scanner.",
+    "action": { "type": "PortCheck", "host": "127.0.0.1", "port": 19999, "timeout_secs": 1 },
+    "expect": {
+      "success": false,
+      "error_kind": "policy_denied"
+    }
+  },
+  {
+    "name": "search_code_no_matches",
+    "description": "Search for a pattern that doesn't exist anywhere",
+    "action": { "type": "SearchCode", "root": "{{TEST_DIR}}", "pattern": "ZZZZZ_NO_MATCH_ZZZZZ" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "find_files_no_matches",
+    "description": "SearchCode with a file glob that matches nothing (FindFiles removed in v0.3)",
+    "action": { "type": "SearchCode", "root": "{{TEST_DIR}}", "pattern": "line", "file_glob": "*.nonexistent_extension_xyz" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "policy_check_meta",
+    "description": "PolicyCheck action on a known-denied action — meta action should succeed even if inner would be denied",
+    "action": { "type": "PolicyCheck", "action": { "type": "RunCommand", "command": "rm", "args": ["-rf", "/"] } },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "snapshot_list_empty",
+    "description": "List snapshots when none exist — should return empty list",
+    "action": { "type": "ListSnapshots" },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "diff_files_nonexistent_source",
+    "description": "Two-path read where the source side doesn't exist — must fail with not_found, not policy_denied (CopyFile removed in v0.3)",
+    "action": {
+      "type": "Diff",
+      "a": "{{TEST_DIR}}/x0ne-nonexistent-copy-src.txt",
+      "b": "{{TEST_DIR}}/hello.txt",
+      "files": true
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "not_found"
+    }
+  },
+  {
+    "name": "edit_nonexistent_source",
+    "description": "Mutating a file that doesn't exist inside an allowed write root — must fail with not_found, not policy_denied (MoveFile removed in v0.3)",
+    "action": {
+      "type": "EditFile",
+      "path": "{{TEST_DIR}}/x0ne-nonexistent-move-src.txt",
+      "edits": [{ "old": "before", "new": "after" }]
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "not_found"
+    }
+  },
+  {
+    "name": "random_bytes_zero",
+    "description": "Generate 0 random bytes — should return empty string",
+    "action": { "type": "RandomBytes", "count": 0 },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "read_json_nonexistent",
+    "description": "ReadFile on a JSON file that doesn't exist — should fail with not_found (ReadJson removed in v0.3)",
+    "action": { "type": "ReadFile", "path": "/tmp/x0ne-nonexistent-json.json" },
+    "expect": {
+      "success": false,
+      "error_kind": "not_found"
+    }
+  },
+  {
+    "name": "create_temp_file_empty",
+    "description": "Create an empty temp file via WriteFile with no content — should succeed with 0 bytes (CreateTempFile removed in v0.3)",
+    "action": { "type": "WriteFile", "path": "/tmp/x0ne-empty-scenario.tmp", "content": "" },
+    "expect": {
+      "success": true,
+      "side_effects": [
+        { "kind": "file_content", "path": "/tmp/x0ne-empty-scenario.tmp", "equals": "" }
+      ]
+    }
+  },
+  {
+    "name": "disk_usage_test_dir",
+    "description": "Disk usage for the test directory via python3 shutil.disk_usage (DiskUsage removed in v0.3)",
+    "action": { "type": "RunCommand", "command": "python3", "args": ["-c", "import shutil; u = shutil.disk_usage('{{TEST_DIR}}'); print(u.total, u.used, u.free)"] },
+    "expect": {
+      "success": true,
+      "output_contains": "\"exit_code\":0"
+    }
+  }
+]

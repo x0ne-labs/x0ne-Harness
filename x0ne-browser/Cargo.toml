@@ -1,0 +1,42 @@
+[package]
+name = "x0ne-browser"
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "X0NE-Browser: CDP-driven Chromium tools for frontend dev agents. Isolated profile, allowlist, audit log, rate limit. The agent can screenshot/click/type a browser without touching the user's. Exposes 14 MCP tools via x0ne-browser-mcp."
+authors = ["x0ne"]
+keywords = ["ai", "agent", "browser", "chromium", "mcp"]
+categories = ["web-programming", "command-line-utilities"]
+
+[lib]
+name = "x0ne_browser"
+path = "src/lib.rs"
+
+[[bin]]
+name = "x0ne-browser-mcp"
+path = "src/bin/mcp.rs"
+
+[dependencies]
+x0ne-mcp        = { path = "../x0ne-mcp" }
+tokio           = { workspace = true }
+serde           = { workspace = true }
+serde_json      = { workspace = true }
+anyhow          = { workspace = true }
+thiserror       = { workspace = true }
+tracing         = { workspace = true }
+tracing-subscriber = { workspace = true }
+base64          = { workspace = true }
+chrono          = { workspace = true }
+dirs            = { workspace = true }
+toml            = { workspace = true }
+futures         = { workspace = true }
+chromiumoxide   = { version = "0.9", default-features = false }
+url             = { workspace = true }
+uuid            = { workspace = true }
+regex           = { workspace = true }
+
+[lints]
+workspace = true

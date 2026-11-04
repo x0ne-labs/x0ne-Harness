@@ -1,0 +1,14 @@
+# Hosts the sandbox may reach through the egress proxy, one per line.
+# Exact names; a leading "*." also allows subdomains. The configured LLM
+# provider's host is added by run-sandboxed.sh. Extra hosts: X0NE_SANDBOX_ALLOW.
+crates.io
+index.crates.io
+static.crates.io
+pypi.org
+files.pythonhosted.org
+deb.debian.org
+github.com
+codeload.github.com
+objects.githubusercontent.com
+# WebSearch first backend: Exa public MCP endpoint, receives the query, no key.
+mcp.exa.ai

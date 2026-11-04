@@ -1,0 +1,128 @@
+[
+  {
+    "name": "desktop_screenshot_allowed",
+    "description": "Screenshot should succeed when desktop is enabled (requires grim on Wayland)",
+    "action": {
+      "type": "Screenshot"
+    },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "desktop_mouse_circle",
+    "description": "Trace one 16-point circle with MoveMouse. Rewritten in v0.3: the old 980-step version interleaved the removed `Sleep` action and also blew past the 20-step Pipeline cap, so it could never have run. Requires wlrctl on Wayland.",
+    "action": {
+      "type": "Pipeline",
+      "stop_on_error": false,
+      "steps": [
+        {
+          "type": "MoveMouse",
+          "x": 1360,
+          "y": 540
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1345,
+          "y": 617
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1301,
+          "y": 681
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1237,
+          "y": 725
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1160,
+          "y": 740
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1083,
+          "y": 725
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1019,
+          "y": 681
+        },
+        {
+          "type": "MoveMouse",
+          "x": 975,
+          "y": 617
+        },
+        {
+          "type": "MoveMouse",
+          "x": 960,
+          "y": 540
+        },
+        {
+          "type": "MoveMouse",
+          "x": 975,
+          "y": 463
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1019,
+          "y": 399
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1083,
+          "y": 355
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1160,
+          "y": 340
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1237,
+          "y": 355
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1301,
+          "y": 399
+        },
+        {
+          "type": "MoveMouse",
+          "x": 1345,
+          "y": 463
+        }
+      ]
+    },
+    "expect": {
+      "success": true,
+      "pipeline": {
+        "steps_total": 16,
+        "steps_completed": 16,
+        "stopped_early": false,
+        "step_success": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      }
+    }
+  }
+]

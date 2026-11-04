@@ -1,0 +1,83 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# x0ne-orchestrator.toml  — reference configuration (v0.2)
+# ─────────────────────────────────────────────────────────────────────────────
+
+[llm]
+# "anthropic" | "ollama" | "openai-compat"
+provider = "anthropic"
+
+[llm.anthropic]
+# api_key_env = "MY_KEY"        # unset: ANTHROPIC_API_KEY
+model = "claude-sonnet-4-20250514"
+max_tokens = 4096
+
+[llm.ollama]
+# OLLAMA_BASE_URL overrides endpoint; the --endpoint flag overrides both
+endpoint = "http://localhost:11434"
+# Unset: OLLAMA_API_KEY, sent to ollama.com only. Behind an auth proxy, name it:
+# api_key_env = "OLLAMA_API_KEY"   # "" sends no key
+model = "llama3.2"
+max_tokens = 4096
+
+[llm.openai_compat]
+# Works with LiteLLM, remote Ollama (/v1), vLLM, Groq, OpenRouter…
+base_url = "http://localhost:4000"
+model = "gpt-4o-mini"
+max_tokens = 4096
+# api_key = "sk-..."           # inline; X0NE_OPENAI_COMPAT_KEY replaces it
+# Unset: OPENAI_API_KEY, sent to api.openai.com only. Elsewhere, name it:
+# api_key_env = "OPENAI_API_KEY"   # "" sends no key
+
+[bridge]
+# "stdio" — spawn x0ne-runtime as a subprocess (default, most secure)
+# "http"  — connect to a running x0ne-runtime HTTP server
+# "sandbox" — run inside container via SSH/Incus
+mode = "stdio"
+x0ne_core_bin = "x0ne-runtime"   # resolved via PATH
+# x0ne_core_addr = "127.0.0.1:7700"     # for mode = "http"
+# sandbox_cmd = "incus exec x0ne -- /opt/x0ne-runtime --mode stdio"  # for mode = "sandbox"
+health_check_timeout_secs = 5
+
+[conversation]
+# Maximum context window in tokens (chars / 4).
+max_context_tokens = 100000
+# Trigger summarization when context is at this % of max_context_tokens.
+summarize_at_percent = 80
+# After summarization, keep the most-recent N% of messages intact.
+keep_recent_percent = 40
+# Floor on how many recent messages are retained when trim_if_needed runs,
+# regardless of budget. Previously the trim loop stopped at 2 messages,
+# which caused the LLM to lose session context on long runs ("I am ready.
+# Please provide the task" mid-session). Default 8 = ~4 user/assistant
+# turns, which preserves enough context for the model to stay oriented.
+# Raise this if you see truncation notices (`[Context truncated]` marker)
+# firing too often; lower it if the budget is so tight that 8 messages
+# routinely bust the budget.
+keep_recent_min_messages = 8
+
+[handles]
+# Seconds of idleness before a handle is auto-checked before each LLM call.
+auto_check_interval_secs = 60
+
+[display]
+# Maximum steps to show inline in the terminal when a Pipeline result arrives.
+pipeline_max_output_lines = 10
+# Lines of file content / stdout to preview in the terminal.
+file_preview_lines = 5
+# Show action execution time in the result line.
+show_action_duration = true
+# Show token usage per request.
+show_token_count = true
+
+[ui]
+# Ask y/n/a before destructive actions (WriteFile, RunCommand, etc.)
+# Automatically disabled in sandbox mode (container = security boundary).
+confirm_writes = true
+# Skip ALL confirmations (same as /auto slash command).
+auto_confirm = false
+
+[cost]
+# USD per million tokens. Take the current figures from the provider's pricing
+# page (https://www.anthropic.com/pricing) and update them when they change.
+sonnet_input_per_m = 3.0
+sonnet_output_per_m = 15.0

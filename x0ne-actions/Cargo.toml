@@ -1,0 +1,24 @@
+[package]
+name = "x0ne-actions"
+version.workspace = true
+publish = false   # not published on crates.io
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Typed action vocabulary shared across the X0NE workspace: the Action enum, its parameters, and the compile-time-exhaustive side-effect classification every security decision is derived from."
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+# Deliberate: `deny_paths` must use the SAME
+# glob semantics as the runtime's policy matcher, or the shared list would
+# mean two different things. `glob` is std-only, no transitive deps.
+glob = { workspace = true }
+# `model_keys` must read a host as reqwest does, and reqwest's `Url` is this
+# crate's. Already in the lock file through reqwest: no new crate.
+url = { workspace = true }

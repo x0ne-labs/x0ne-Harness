@@ -1,0 +1,168 @@
+[
+  {
+    "name": "missing_type_field",
+    "description": "JSON object with no 'type' field — must be rejected at parse time",
+    "action": { "path": "/tmp/foo.txt" },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "empty_object",
+    "description": "Completely empty JSON object",
+    "action": {},
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "unknown_action_type",
+    "description": "Type field present but not a known variant",
+    "action": { "type": "DropDatabase" },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "empty_type_string",
+    "description": "Type field is an empty string",
+    "action": { "type": "" },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "type_is_number",
+    "description": "Type field is a number instead of a string",
+    "action": { "type": 42 },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "type_is_null",
+    "description": "Type field is null",
+    "action": { "type": null },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "type_is_boolean",
+    "description": "Type field is a boolean",
+    "action": { "type": true },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "read_file_missing_path",
+    "description": "ReadFile without the required 'path' field",
+    "action": { "type": "ReadFile" },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "write_file_missing_content",
+    "description": "WriteFile without the required 'content' field",
+    "action": { "type": "WriteFile", "path": "/tmp/x.txt" },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "run_command_missing_command",
+    "description": "RunCommand without the required 'command' field",
+    "action": { "type": "RunCommand", "args": ["test"] },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "wrong_field_type_timeout",
+    "description": "timeout_secs as a string instead of a number",
+    "action": { "type": "RunCommand", "command": "echo", "timeout_secs": "not_a_number" },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "wrong_field_type_recursive",
+    "description": "WatchAndReact's boolean 'recursive' given a string — must be rejected at parse time",
+    "action": {
+      "type": "WatchAndReact",
+      "path": "/tmp",
+      "recursive": "yes",
+      "action": { "type": "ListHandles" }
+    },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "extra_fields_ignored",
+    "description": "Extra unknown fields should be silently ignored by serde",
+    "action": { "type": "RandomBytes", "count": 8, "encoding": "hex", "bogus_field": "whatever", "another": 42 },
+    "expect": {
+      "success": true
+    }
+  },
+  {
+    "name": "diff_missing_a",
+    "description": "Diff without the required 'a' side — must be rejected at parse time",
+    "action": { "type": "Diff", "b": "/tmp/x.txt", "files": true },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "diff_missing_b",
+    "description": "Diff without the required 'b' side — must be rejected at parse time",
+    "action": { "type": "Diff", "a": "/tmp/x.txt", "files": true },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "random_bytes_string_count",
+    "description": "RandomBytes with count as string instead of number",
+    "action": { "type": "RandomBytes", "count": "not_a_number" },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "remember_missing_value",
+    "description": "Remember without the required 'value' field — must be rejected at parse time",
+    "action": { "type": "Remember", "key": "scenario_missing_value" },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  },
+  {
+    "name": "http_request_missing_url",
+    "description": "HttpRequest without the required 'url' field",
+    "action": { "type": "HttpRequest", "method": "GET" },
+    "expect": {
+      "success": false,
+      "error_kind": "invalid_input"
+    }
+  }
+]

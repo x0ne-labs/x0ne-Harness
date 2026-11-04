@@ -1,0 +1,229 @@
+[
+  {
+    "name": "single-echo-alpine",
+    "description": "Ephemeral: alpine/edge, echo, stdout checked",
+    "action": {
+      "type": "RunIncus",
+      "image": "{{INCUS_IMAGE}}",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 128,
+      "cpu_limit": 1,
+      "timeout_secs": 30,
+      "command": ["sh", "-c", "echo hello-probe"]
+    },
+    "expect": { "success": true }
+  },
+  {
+    "name": "file-injection-shell",
+    "description": "File injection: sh script copied into /workspace, executed",
+    "action": {
+      "type": "RunIncus",
+      "image": "{{INCUS_IMAGE}}",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 128,
+      "cpu_limit": 1,
+      "timeout_secs": 30,
+      "files": { "check.sh": "#!/bin/sh\necho injection-ok\n" },
+      "command": ["sh", "/workspace/check.sh"]
+    },
+    "expect": { "success": true }
+  },
+  {
+    "name": "file-collection",
+    "description": "Collection: file written in the container, brought back via collect_files",
+    "action": {
+      "type": "RunIncus",
+      "image": "{{INCUS_IMAGE}}",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 128,
+      "timeout_secs": 30,
+      "command": ["sh", "-c", "mkdir -p /workspace && echo result=42 > /workspace/out.txt"],
+      "collect_files": ["/workspace/out.txt"]
+    },
+    "expect": { "success": true }
+  },
+  {
+    "name": "timeout-kills-container",
+    "description": "Short timeout (3s) on sleep 60 → timed_out=true, zero zombie",
+    "action": {
+      "type": "RunIncus",
+      "image": "{{INCUS_IMAGE}}",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 128,
+      "timeout_secs": 3,
+      "command": ["sh", "-c", "sleep 60"]
+    },
+    "expect": { "success": true }
+  },
+  {
+    "name": "image-allowlist-blocks-unknown",
+    "description": "Image with unknown prefix (not 'images:' or 'ubuntu:') is denied by allowlist",
+    "action": {
+      "type": "RunIncus",
+      "image": "malicious:evil",
+      "remote": "{{INCUS_REMOTE}}",
+      "command": ["echo", "should-not-run"]
+    },
+    "expect": { "success": false, "error_kind": "policy_denied" }
+  },
+
+  {
+    "name": "parallel-worlds-pick-winner",
+    "description": "3 parallel worlds: sol-a=exit1, sol-b=exit0 (winner), sol-c=exit2",
+    "action": {
+      "type": "RunIncusGroup",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 128,
+      "timeout_secs": 30,
+      "max_parallel": 3,
+      "tasks": [
+        {
+          "id": "sol-a",
+          "image": "{{INCUS_IMAGE}}",
+          "command": ["sh", "-c", "exit 1"]
+        },
+        {
+          "id": "sol-b",
+          "image": "{{INCUS_IMAGE}}",
+          "command": ["sh", "-c", "echo winner && exit 0"]
+        },
+        {
+          "id": "sol-c",
+          "image": "{{INCUS_IMAGE}}",
+          "command": ["sh", "-c", "exit 2"]
+        }
+      ]
+    },
+    "expect": { "success": true }
+  },
+  {
+    "name": "parallel-4-containers-timing",
+    "description": "4 containers in parallel — checks that the total < 4x the slowest",
+    "action": {
+      "type": "RunIncusGroup",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 128,
+      "timeout_secs": 60,
+      "max_parallel": 4,
+      "tasks": [
+        { "id": "w1", "image": "{{INCUS_IMAGE}}", "command": ["sh", "-c", "echo w1; sleep 1"] },
+        { "id": "w2", "image": "{{INCUS_IMAGE}}", "command": ["sh", "-c", "echo w2; sleep 1"] },
+        { "id": "w3", "image": "{{INCUS_IMAGE}}", "command": ["sh", "-c", "echo w3; sleep 1"] },
+        { "id": "w4", "image": "{{INCUS_IMAGE}}", "command": ["sh", "-c", "echo w4; sleep 1"] }
+      ]
+    },
+    "expect": { "success": true }
+  },
+  {
+    "name": "parallel-semaphore-cap",
+    "description": "6 tasks, max_parallel=2 — the semaphore bounds concurrency",
+    "action": {
+      "type": "RunIncusGroup",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 128,
+      "timeout_secs": 60,
+      "max_parallel": 2,
+      "tasks": [
+        { "id": "t1", "image": "{{INCUS_IMAGE}}", "command": ["sh", "-c", "echo t1"] },
+        { "id": "t2", "image": "{{INCUS_IMAGE}}", "command": ["sh", "-c", "echo t2"] },
+        { "id": "t3", "image": "{{INCUS_IMAGE}}", "command": ["sh", "-c", "echo t3"] },
+        { "id": "t4", "image": "{{INCUS_IMAGE}}", "command": ["sh", "-c", "echo t4"] },
+        { "id": "t5", "image": "{{INCUS_IMAGE}}", "command": ["sh", "-c", "echo t5"] },
+        { "id": "t6", "image": "{{INCUS_IMAGE}}", "command": ["sh", "-c", "echo t6"] }
+      ]
+    },
+    "expect": { "success": true }
+  },
+  {
+    "name": "cross-platform-alpine-ubuntu",
+    "description": "Same command on alpine/edge + ubuntu/24.04 at once",
+    "action": {
+      "type": "RunIncusGroup",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 256,
+      "timeout_secs": 60,
+      "max_parallel": 2,
+      "tasks": [
+        {
+          "id": "alpine",
+          "image": "images:alpine/edge",
+          "command": ["sh", "-c", "echo alpine && uname -r"]
+        },
+        {
+          "id": "ubuntu",
+          "image": "images:ubuntu/24.04",
+          "command": ["sh", "-c", "echo ubuntu && uname -r"]
+        }
+      ]
+    },
+    "expect": { "success": true }
+  },
+  {
+    "name": "snapshot-on-exit",
+    "description": "Rollback point: save container state via snapshot_on_exit",
+    "action": {
+      "type": "RunIncus",
+      "image": "{{INCUS_IMAGE}}",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 128,
+      "timeout_secs": 30,
+      "command": ["sh", "-c", "echo state-before-risky-op > /tmp/state.txt && cat /tmp/state.txt"],
+      "snapshot_on_exit": "probe-rollback-point"
+    },
+    "expect": { "success": true }
+  },
+  {
+    "name": "cow-clone-from-snapshot",
+    "description": "CoW < 200ms: clone from {{INCUS_SNAPSHOT}} (expects an existing snapshot via INCUS_SNAPSHOT=container/snap)",
+    "action": {
+      "type": "RunIncus",
+      "image": "{{INCUS_IMAGE}}",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 256,
+      "timeout_secs": 30,
+      "command": ["sh", "-c", "echo cow-clone-ok"],
+      "base_snapshot": "{{INCUS_SNAPSHOT}}"
+    },
+    "expect": { "success": true }
+  },
+  {
+    "name": "env-injection",
+    "description": "Env variables injected into the container",
+    "action": {
+      "type": "RunIncus",
+      "image": "{{INCUS_IMAGE}}",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 128,
+      "timeout_secs": 30,
+      "env": { "MY_VAR": "hello-from-env" },
+      "command": ["sh", "-c", "echo $MY_VAR"]
+    },
+    "expect": { "success": true }
+  },
+  {
+    "name": "memory-cap-enforced",
+    "description": "Container capped at 64MB — must start without error",
+    "action": {
+      "type": "RunIncus",
+      "image": "{{INCUS_IMAGE}}",
+      "remote": "{{INCUS_REMOTE}}",
+      "network": "none",
+      "memory_mb": 64,
+      "cpu_limit": 1,
+      "timeout_secs": 15,
+      "command": ["sh", "-c", "free -m && echo memory-cap-ok"]
+    },
+    "expect": { "success": true }
+  }
+]

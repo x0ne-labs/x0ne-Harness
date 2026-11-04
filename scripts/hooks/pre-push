@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# pre-push: nothing internal leaves this repository.
+#
+# Refuses the push when, for any ref being pushed:
+#   - a pushed commit adds or modifies a maintainer working file:
+#     TASKS*.md, docs/plan*, landing-spec*, _design/*, CLAUDE.md, AGENTS.md,
+#     .mcp.json, .claude/*, .interne/*;
+#   - the pushed tree still carries such a file;
+#   - a pushed commit's author or committer is not x0ne <dev@x0ne.co>;
+#   - a pushed commit's message, its added lines, a tag message or the pushed
+#     tree contains an entry of the private deny list (internal host names,
+#     addresses and domains).
+# The deny list never lives in a repository:
+#   $HOME/.x0ne-secrets/push-deny.txt   mode 0600, one entry per line, '#' comments,
+#   a leading '~' marks a POSIX extended regex; matching is case-insensitive.
+# A missing, unreadable, non-private or empty list refuses every push, and so
+# does a git or grep command that fails: an error is never read as "no match".
+# Enable with: git config core.hooksPath <this directory>  (make hooks).
+# Bypassing it is a deliberate act: git push --no-verify.
+set -u
+
+deny_file="${HOME:?HOME is not set}/.x0ne-secrets/push-deny.txt"
+remote=${1:-origin}
+identity="x0ne <dev@x0ne.co>"
+
+say() { printf 'pre-push: %s\n' "$@" >&2; }
+die() { say "$@" "push refused"; exit 1; }
+
+[ -e "$deny_file" ] || die "deny list missing: $deny_file" \
+  "create it (one internal host name, address or domain per line), then chmod 600"
+[ -f "$deny_file" ] && [ -r "$deny_file" ] || die "deny list is not a readable file: $deny_file"
+[ "$(ls -ld -- "$deny_file" | cut -c5-10)" = "------" ] || die "deny list must be private: chmod 600 $deny_file"
+
+tmp=$(mktemp -d) || die "mktemp failed"
+trap 'rm -rf "$tmp"' EXIT
+fixed=$tmp/fixed regex=$tmp/regex text=$tmp/text err=$tmp/err
+: > "$fixed"; : > "$regex"
+while IFS= read -r line || [ -n "$line" ]; do
+  line=${line#"${line%%[![:space:]]*}"}; line=${line%"${line##*[![:space:]]}"}
+  case $line in
+    ''|'#'*) ;;
+    '~'*) printf '%s\n' "${line:1}" >> "$regex" ;;
+    *) printf '%s\n' "$line" >> "$fixed" ;;
+  esac
+done < "$deny_file"
+[ -s "$fixed" ] || [ -s "$regex" ] || die "deny list has no entry: $deny_file"
+if [ -s "$regex" ] && ! grep -E -f "$regex" /dev/null 2> "$err" && [ -s "$err" ]; then
+  die "deny list: invalid regex: $(head -n1 "$err")"
+fi
+
+# grep and git grep exit 1 on no match, above 1 on an error. git grep also exits 1 on an object it
+# cannot read, saying so on stderr only (git 2.47.3, 2026-10-27): a status above 1 or any stderr
+# output is an error, and an error stops the push.
+# matches <file>: the deny-list hits in <file>, one per line (empty when none).
+matches() {
+  local rc; : > "$tmp/hits"; : > "$err"
+  if [ -s "$fixed" ]; then grep -i -n -F -f "$fixed" -- "$1" >> "$tmp/hits" 2>> "$err"; rc=$?; [ $rc -le 1 ] || return 2; fi
+  if [ -s "$regex" ]; then grep -i -n -E -f "$regex" -- "$1" >> "$tmp/hits" 2>> "$err"; rc=$?; [ $rc -le 1 ] || return 2; fi
+  [ ! -s "$err" ] || return 2
+  cut -c1-160 "$tmp/hits" | head -n5
+}
+# tree_matches <tree-ish>: the same over every tracked text file of that tree.
+tree_matches() {
+  local rc; : > "$tmp/hits"; : > "$err"
+  if [ -s "$fixed" ]; then git grep -I -i -n -F -f "$fixed" "$1" -- . >> "$tmp/hits" 2>> "$err"; rc=$?; [ $rc -le 1 ] || return 2; fi
+  if [ -s "$regex" ]; then git grep -I -i -n -E -f "$regex" "$1" -- . >> "$tmp/hits" 2>> "$err"; rc=$?; [ $rc -le 1 ] || return 2; fi
+  [ ! -s "$err" ] || return 2
+  sed 's/^[0-9a-f]\{40,64\}://' "$tmp/hits" | cut -c1-160 | head -n10
+}
+# failed <what>: the push stops on a command that did not run to the end.
+failed() { die "$1 failed: $(head -n1 "$err")"; }
+# working_file <path>: 0 when the path is a maintainer working file.
+working_file() {
+  local p=${1,,}
+  [[ $p =~ (^|/)tasks[^/]*\.md$ ]] || [[ $p =~ (^|/)docs/plan ]] ||
+    [[ $p =~ (^|/)landing-spec[^/]*$ ]] || [[ $p =~ (^|/)_design/ ]] ||
+    [[ $p =~ (^|/)(claude|agents)\.md$ ]] || [[ $p =~ (^|/)\.mcp\.json$ ]] ||
+    [[ $p =~ (^|/)\.claude/ ]] || [[ $p =~ (^|/)\.interne/ ]]
+}
+
+refused=0
+refuse() { say "$@"; refused=1; }
+mapfile -t updates
+for u in "${updates[@]}"; do
+  read -r local_ref local_sha remote_ref remote_sha <<< "$u"
+  [[ $local_sha =~ ^0+$ ]] && continue                      # deleting a remote ref
+  if [[ $remote_sha =~ ^0+$ ]] || ! git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
+    commits=$(git rev-list "$local_sha" --not --remotes="$remote" 2> "$err") ||
+      commits=$(git rev-list "$local_sha" 2> "$err") || failed "$local_ref: git rev-list"
+  else
+    commits=$(git rev-list "$remote_sha..$local_sha" 2> "$err") || failed "$local_ref: git rev-list"
+  fi
+
+  # The pushed tip: every file of its tree, and a tag's own message.
+  git ls-tree -r -z --name-only "$local_sha" > "$tmp/paths" 2> "$err" || failed "$local_ref: git ls-tree"
+  while IFS= read -r -d '' p; do
+    working_file "$p" && refuse "$local_ref: the pushed tree carries an internal working file: $p"
+  done < "$tmp/paths"
+  hits=$(tree_matches "$local_sha") || failed "$local_ref: git grep of the pushed tree"
+  [ -z "$hits" ] || refuse "$local_ref: the pushed tree matches the deny list:" "$hits"
+  if [ "$(git cat-file -t "$local_sha")" = tag ]; then
+    git cat-file -p "$local_sha" > "$text" 2> "$err" || failed "$local_ref: git cat-file"
+    hits=$(matches "$text") || failed "$local_ref: grep of the tag message"
+    [ -z "$hits" ] || refuse "$local_ref: the tag message matches the deny list:" "$hits"
+  fi
+
+  # Every commit that would become public: its author and committer, the paths
+  # it adds or changes, the lines it adds, its message. Deletions are fine:
+  # removing a leak must be pushable.
+  for c in $commits; do
+    short=${c:0:10}
+    git log -1 --format='%an <%ae>%n%cn <%ce>' "$c" > "$text" 2> "$err" || failed "$short: git log"
+    { IFS= read -r author; IFS= read -r committer; } < "$text"
+    [ "$author" = "$identity" ] || refuse "$short: author is $author, not $identity"
+    [ "$committer" = "$identity" ] || refuse "$short: committer is $committer, not $identity"
+    if git rev-parse -q --verify "$c^1" >/dev/null 2>&1; then range=("$c^1" "$c"); else range=(--root "$c"); fi
+    git diff-tree -r -z --no-commit-id --name-only --diff-filter=d "${range[@]}" > "$tmp/paths" 2> "$err" ||
+      failed "$short: git diff-tree"
+    while IFS= read -r -d '' p; do
+      working_file "$p" && refuse "$short adds or changes an internal working file: $p"
+    done < "$tmp/paths"
+    git diff-tree -r --no-commit-id -p --no-color --diff-filter=d "${range[@]}" > "$tmp/diff" 2> "$err" ||
+      failed "$short: git diff-tree"
+    grep '^+' "$tmp/diff" | grep -v '^+++ ' | cut -c2- > "$text"
+    hits=$(matches "$text") || failed "$short: grep of the added lines"
+    [ -z "$hits" ] || refuse "$short adds lines matching the deny list:" "$hits"
+    git log -1 --format=%B "$c" > "$text" 2> "$err" || failed "$short: git log"
+    hits=$(matches "$text") || failed "$short: grep of the commit message"
+    [ -z "$hits" ] || refuse "$short: commit message matches the deny list:" "$hits"
+  done
+done
+
+if [ $refused -ne 0 ]; then
+  say "push refused: nothing goes to $remote until the content above is gone from the tree and from the pushed history"
+  exit 1
+fi
+exit 0
