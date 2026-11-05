@@ -118,7 +118,7 @@ rustyline         = { version = "18", features = ["derive"] }
 indicatif         = "0.18"
 dotenvy           = "0.15"
 # Encoding
-base64            = "0.22"
+base64            = "0.23"
 uuid              = { version = "1", features = ["v7", "serde"] }
 # Low-level libc (cfg(unix) only — Windows builds skip this dep)
 libc              = "0.2"
