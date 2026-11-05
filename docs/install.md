@@ -41,8 +41,10 @@ What the script does, and nothing else:
   refused;
 - refuses to install if the archive is missing from `SHA256SUMS` or its
   SHA-256 differs;
-- if the GitHub CLI is installed and logged in, runs
-  `gh attestation verify` and refuses on failure; otherwise prints the command;
+- if the GitHub CLI 2.56 or later is installed and logged in, runs
+  `gh attestation verify --signer-workflow` and refuses on failure; otherwise
+  says the provenance is not verified and why, and goes on with the SHA-256
+  check alone;
 - copies `x0ne`, `x0ne-runtime` and `x0ne-orchestrator` to `~/.local/bin`
   (`X0NE_INSTALL_DIR` to change it), and the sample configs of the archive
   (the runtime profiles and the read-only MCP profile) to `~/.config/x0ne`
@@ -52,13 +54,14 @@ What the script does, and nothing else:
 
 `sh install.sh --uninstall` removes the three binaries and keeps your configuration.
 
-To verify a release by hand:
+To verify a release by hand (gh 2.56 or later):
 
 ```bash
 gh release download v0.2.0 --repo x0ne-labs/x0ne-Harness \
   --pattern 'x0ne-x86_64-unknown-linux-musl.tar.gz' --pattern SHA256SUMS
 sha256sum --ignore-missing -c SHA256SUMS
-gh attestation verify x0ne-x86_64-unknown-linux-musl.tar.gz --repo x0ne-labs/x0ne-Harness
+gh attestation verify x0ne-x86_64-unknown-linux-musl.tar.gz --repo x0ne-labs/x0ne-Harness \
+  --signer-workflow x0ne-labs/x0ne-Harness/.github/workflows/release.yml
 ```
 
 Release assets (stable names): `x0ne-x86_64-unknown-linux-musl.tar.gz`,
