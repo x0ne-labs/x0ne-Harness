@@ -21,7 +21,7 @@
 
 <p align="center"><sub>The terminal agent starting on a demo project: a file read, a read of
 <code>.env</code> refused by the policy, and the approval prompt before the tests run.
-The model's replies were scripted for this capture (<a href="docs/assets/tui.tape">recording script</a>).</sub></p>
+The model's replies and the RAM and load in the status bar were scripted for this capture (<a href="docs/assets/tui.tape">recording script</a>).</sub></p>
 
 x0ne Harness puts a safety layer between an AI agent and your machine. Every
 action is typed and checked against a policy before it runs, files are

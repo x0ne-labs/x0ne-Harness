@@ -47,3 +47,15 @@ TOML
 python3 "$DEMO_ASSETS/tui-demo-model.py" 9931 "$DEMO_ROOT/model.log" &
 export HOME="$DEMO_ROOT/home"
 cd "$DEMO_ROOT/acme-api"
+# The status bar shows the RAM and load of the machine it runs on: x0ne reads
+# fixed ones here. The second /proc mount is what lets the runtime's own bwrap
+# mount a /proc: the kernel refuses it when every /proc in sight has a file over it.
+printf 'MemTotal: 16777216 kB\nMemAvailable: 12582912 kB\n' > "$DEMO_ROOT/meminfo"
+printf '0.40 0.35 0.30 1/200 1000\n' > "$DEMO_ROOT/loadavg"
+mkdir "$DEMO_ROOT/proc"
+x0ne() {
+  bwrap --dev-bind / / --proc /proc \
+    --ro-bind "$DEMO_ROOT/meminfo" /proc/meminfo \
+    --ro-bind "$DEMO_ROOT/loadavg" /proc/loadavg \
+    --proc "$DEMO_ROOT/proc" -- "$(type -P x0ne)" "$@"
+}

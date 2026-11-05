@@ -3,6 +3,8 @@
 # From the repo root, x0ne, python3 and bwrap on PATH: vhs docs/assets/tui.tape
 # Recorded with VHS v0.12.1 plus Debian's bubblewrap, in podman with
 # --security-opt 'unmask=/proc/*' so that bwrap can mount /proc.
+# tui-demo.sh gives x0ne a fixed RAM and load, so the status bar shows 16G
+# whatever machine records.
 
 Output docs/assets/tui.gif
 
