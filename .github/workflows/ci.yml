@@ -199,7 +199,10 @@ jobs:
       - run: rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       # Every test binary runs before the job reports red: one failure no longer hides the rest.
+      # The confinement tests skip where bwrap cannot start; on this runner that is a failure.
       - name: test (all features, doctests included)
+        env:
+          X0NE_REQUIRE_BWRAP: "1"
         run: cargo test --locked --workspace --all-features --no-fail-fast
       - name: scenario suite
         run: cargo run --locked --bin x0ne-scenario-runner
