@@ -7,6 +7,8 @@
 //! One test function: it sets process-wide environment variables, which other
 //! threads must not read concurrently. Without bwrap it skips, unless
 //! `X0NE_REQUIRE_BWRAP=1`.
+#![cfg(target_os = "linux")]
+// Abstract unix sockets and bwrap are Linux only: off Linux the file is empty.
 
 use std::os::unix::net::UnixListener;
 use std::path::{Path, PathBuf};
