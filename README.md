@@ -1,4 +1,4 @@
-<h1 align="center">x0ne Harness</h1>
+<h1 align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg"><img src="docs/assets/logo-light.svg" alt="x0ne Harness" width="720"></picture></h1>
 
 <p align="center"><strong>A hardened harness for AI coding agents.</strong></p>
 
@@ -17,11 +17,11 @@
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
-[![x0ne Harness terminal UI](docs/assets/tui.png)](docs/tui.md)
+[![x0ne Harness terminal UI](docs/assets/tui.gif)](docs/tui.md)
 
-<p align="center"><sub>The terminal agent on a demo project: an edit applied with its diff, a read of
-<code>.env</code> refused by the policy, and the approval prompt before <code>npm test</code> runs.
-The model's replies were scripted for this capture.</sub></p>
+<p align="center"><sub>The terminal agent starting on a demo project: a file read, a read of
+<code>.env</code> refused by the policy, and the approval prompt before the tests run.
+The model's replies were scripted for this capture (<a href="docs/assets/tui.tape">recording script</a>).</sub></p>
 
 x0ne Harness puts a safety layer between an AI agent and your machine. Every
 action is typed and checked against a policy before it runs, files are
