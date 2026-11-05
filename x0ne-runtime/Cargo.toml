@@ -103,7 +103,7 @@ libc = { workspace = true }
 # The verifier's ADVERSARIAL modules are written in WAT, not hand-encoded LEB128
 # (that would be a test debugging its harness). Pinned exactly to x0ne-asm's
 # version: two `wat` versions are two encoders. Dev-dependency: nothing ships.
-wat = "=1.236.0"
+wat = "=1.262.0"
 # Test only: enumerates every wasm proposal so the engine lists stay decided.
 wasmparser = "=0.236.0"
 

@@ -27,7 +27,7 @@ postcard     = { version = "1.1", default-features = false, features = ["alloc"]
 [dev-dependencies]
 serde_json = { workspace = true }
 # Corpus C: adversarial modules are written in WAT, not in raw bytes.
-wat = "=1.236.0"
+wat = "=1.262.0"
 
 [lints]
 workspace = true
