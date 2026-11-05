@@ -33,6 +33,12 @@ pub const DEFAULT_ROWS: u16 = 50;
 const DEFAULT_WAIT_MS: u64 = 10_000;
 const HISTORY_LIMIT: usize = 10_000;
 const POLL: Duration = Duration::from_millis(80);
+/// What one `display-message` reads of a tmux pane, in [`PaneInfo`] order.
+const PANE_FMT: &str =
+    "#{cursor_x} #{cursor_y} #{pane_dead} #{pane_dead_status} #{pane_dead_signal}";
+/// How long a view waits for tmux to reap a dead pane's child.
+const REAP_WAIT: Duration = Duration::from_secs(1);
+const REAP_POLL: Duration = Duration::from_millis(10);
 /// How long a PTY exit waits for the output to drain to EOF. A
 /// descendant that keeps the terminal open (setsid, SIGHUP ignored)
 /// withholds EOF: the exit is then reported this much later.
@@ -686,6 +692,60 @@ impl TmuxServer {
         // SAFETY: our own child; SIGTERM makes tmux HUP every pane.
         unsafe { libc::kill(self.pid as i32, libc::SIGTERM) };
     }
+
+    fn reap(&self) {
+        // SAFETY: our own child; a spare SIGCHLD only makes tmux call waitpid.
+        unsafe { libc::kill(self.pid as i32, libc::SIGCHLD) };
+    }
+}
+
+/// One look at a tmux pane, parsed from [`PANE_FMT`].
+#[derive(Debug)]
+struct PaneInfo {
+    cursor: Option<(u64, u64)>,
+    dead: bool,
+    status: Option<i32>,
+    /// A number on Linux, a name where libc has `sys_signame` (macOS).
+    signaled: bool,
+}
+
+impl PaneInfo {
+    fn parse(out: &str) -> PaneInfo {
+        let f: Vec<&str> = out.trim_end_matches('\n').split(' ').collect();
+        let num = |i: usize| f.get(i).and_then(|v| v.parse::<i64>().ok());
+        PaneInfo {
+            cursor: match (num(0), num(1)) {
+                (Some(x), Some(y)) => Some((x as u64, y as u64)),
+                _ => None,
+            },
+            dead: num(2) == Some(1),
+            status: num(3).map(|v| v as i32),
+            signaled: f.get(4).is_some_and(|s| !s.is_empty()),
+        }
+    }
+
+    /// Dead, but tmux has not reaped the child: no exit status, no signal.
+    fn unreaped(&self) -> bool {
+        self.dead && self.status.is_none() && !self.signaled
+    }
+}
+
+/// tmux 3.4 with libutempter (ubuntu-24.04) loses the SIGCHLD of a child that exits during
+/// `utempter_remove_record` (tmux issue 311): 124 of 200 panes dead without status, 2026-11-05.
+/// A SIGCHLD to the server reaps them; past `wait` the pane is reported without status.
+async fn settle<L, F>(mut look: L, nudge: impl Fn(), wait: Duration) -> Result<PaneInfo, String>
+where
+    L: FnMut() -> F,
+    F: std::future::Future<Output = Result<String, String>>,
+{
+    let t0 = Instant::now();
+    let mut p = PaneInfo::parse(&look().await?);
+    while p.unreaped() && t0.elapsed() < wait {
+        nudge();
+        tokio::time::sleep(REAP_POLL).await;
+        p = PaneInfo::parse(&look().await?);
+    }
+    Ok(p)
 }
 
 #[cfg(target_os = "linux")]
@@ -990,21 +1050,14 @@ impl Term {
                 let t = Term::target(name);
                 // pane_dead before capture-pane: a dead pane's fd is
                 // closed, so the capture that follows is final.
-                let fmt = "#{cursor_x} #{cursor_y} #{pane_dead} #{pane_dead_status}";
-                let info = srv
-                    .run(
-                        &[
-                            "display-message".into(),
-                            "-p".into(),
-                            "-t".into(),
-                            t.clone(),
-                            fmt.into(),
-                        ],
-                        None,
-                    )
-                    .await?;
-                let f: Vec<&str> = info.trim_end_matches('\n').split(' ').collect();
-                let num = |i: usize| f.get(i).and_then(|v| v.parse::<i64>().ok());
+                let ask: [String; 5] = [
+                    "display-message".into(),
+                    "-p".into(),
+                    "-t".into(),
+                    t.clone(),
+                    PANE_FMT.into(),
+                ];
+                let p = settle(|| srv.run(&ask, None), || srv.reap(), REAP_WAIT).await?;
                 let mut args = vec!["capture-pane".to_string(), "-p".into(), "-t".into(), t];
                 if history > 0 {
                     args.push("-S".into());
@@ -1018,17 +1071,13 @@ impl Term {
                 }
                 let split = all.len().saturating_sub(screen_rows);
                 let mut rows = all.split_off(split);
-                let cursor = match (num(0), num(1)) {
-                    (Some(x), Some(y)) => Some((x as u64, y as u64)),
-                    _ => None,
-                };
-                pad_to_cursor(&mut rows, cursor);
+                pad_to_cursor(&mut rows, p.cursor);
                 Ok(View {
                     rows,
                     history: all,
-                    cursor,
-                    dead: num(2) == Some(1),
-                    status: num(3).map(|v| v as i32),
+                    cursor: p.cursor,
+                    dead: p.dead,
+                    status: p.status,
                 })
             }
             Backend::Pty(p) => Ok(p.view(history)),
@@ -1988,5 +2037,58 @@ mod tests {
             took >= DRAIN_GRACE,
             "EOF came with the slave held: {took:?}"
         );
+    }
+
+    // ── tmux: a dead pane whose child is not reaped yet ──
+
+    /// `settle` over canned `display-message` outputs, the last one repeated.
+    /// Returns the info, the looks and the nudges.
+    async fn settle_on(outs: &[&str], wait: Duration) -> (PaneInfo, usize, usize) {
+        let looks = std::cell::Cell::new(0);
+        let nudges = std::cell::Cell::new(0);
+        let p = settle(
+            || {
+                let i = looks.get();
+                looks.set(i + 1);
+                let out = outs.get(i).or(outs.last()).map(|s| (*s).to_string());
+                async move { out.ok_or_else(|| "no output".to_string()) }
+            },
+            || nudges.set(nudges.get() + 1),
+            wait,
+        )
+        .await
+        .unwrap();
+        (p, looks.get(), nudges.get())
+    }
+
+    /// The CI's tmux 3.4 answered `exited: true, exit_status: null` (2026-11-05).
+    #[tokio::test]
+    async fn a_dead_tmux_pane_without_a_status_is_read_again_until_it_has_one() {
+        let (p, looks, nudges) = settle_on(&["0 2 1  \n", "0 2 1 7 \n"], REAP_WAIT).await;
+        assert_eq!(p.status, Some(7), "{p:?}");
+        assert!(p.dead && p.cursor == Some((0, 2)), "{p:?}");
+        assert_eq!((looks, nudges), (2, 1));
+    }
+
+    #[tokio::test]
+    async fn a_live_pane_or_one_with_a_status_or_a_signal_is_read_once() {
+        assert_eq!(PANE_FMT.split(' ').nth(4), Some("#{pane_dead_signal}"));
+        for out in ["0 2 0  \n", "0 2 1 0 \n", "0 2 1  9\n", "0 2 1  kill\n"] {
+            let (p, looks, nudges) = settle_on(&[out], REAP_WAIT).await;
+            assert_eq!((looks, nudges), (1, 0), "{out:?}: {p:?}");
+            assert!(!p.unreaped(), "{out:?}: {p:?}");
+        }
+        let (p, ..) = settle_on(&["0 2 1  9\n"], REAP_WAIT).await;
+        assert!(p.dead && p.signaled && p.status.is_none(), "{p:?}");
+    }
+
+    #[tokio::test]
+    async fn a_pane_never_reaped_is_reported_dead_once_the_wait_is_over() {
+        let t0 = Instant::now();
+        let (p, looks, _) = settle_on(&["0 2 1  \n"], Duration::from_millis(100)).await;
+        let took = t0.elapsed();
+        assert!(p.unreaped(), "{p:?}");
+        assert!(looks > 1, "{looks} looks");
+        assert!(took < Duration::from_secs(1), "{took:?}");
     }
 }
