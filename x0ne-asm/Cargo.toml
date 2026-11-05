@@ -16,7 +16,7 @@ serde = { workspace = true }
 # (its Cargo.toml, read 2026-10-24). A newer version would duplicate `wasmparser`: two
 # validators, two semantics, which `WASM_FEATURES` exists to prevent. Pre-1.0: `^` protects nothing.
 wasm-encoder = "=0.236.0"
-wasmparser   = "=0.236.0"
+wasmparser   = "=0.262.0"
 # The manifest codec. bincode is unmaintained (RUSTSEC-2025-0141; 3.0.0 is a
 # compile_error! tombstone). postcard's wire format is specified and frozen for 1.x;
 # `tests/manifest_wire_format.rs` pins the bytes against the former bincode 2 output.
