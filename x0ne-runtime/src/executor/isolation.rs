@@ -490,6 +490,7 @@ pub const DESKTOP_FIXED_PATHS: &[&str] = &["/tmp/.X11-unix", "/tmp/.ydotool_sock
 
 /// Landlock ABI of the running kernel, 0 without Landlock. ABI 6 scopes
 /// abstract unix sockets (an X server listens on one).
+#[cfg(target_os = "linux")]
 fn landlock_abi() -> i64 {
     // SAFETY: LANDLOCK_CREATE_RULESET_VERSION with a null attr and size 0
     // only returns the ABI version.
@@ -502,6 +503,12 @@ fn landlock_abi() -> i64 {
         )
     };
     v.max(0)
+}
+
+/// Landlock is Linux only: elsewhere the ABI is 0 and the caller refuses.
+#[cfg(not(target_os = "linux"))]
+fn landlock_abi() -> i64 {
+    0
 }
 
 /// Refusal of an agent command while `desktop.allowed_apps` is set.

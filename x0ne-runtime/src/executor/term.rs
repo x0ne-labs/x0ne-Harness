@@ -753,20 +753,21 @@ impl PtyTerm {
         use std::os::fd::{FromRawFd, OwnedFd};
         let mut master: libc::c_int = -1;
         let mut slave: libc::c_int = -1;
-        let ws = libc::winsize {
+        let mut ws = libc::winsize {
             ws_row: rows,
             ws_col: cols,
             ws_xpixel: 0,
             ws_ypixel: 0,
         };
-        // SAFETY: out-pointers to two ints and a winsize we own.
+        // SAFETY: out-pointers to two ints and a winsize we own. Apple's openpty
+        // takes *mut termios and winsize, Linux's *const: *mut coerces to both.
         let rc = unsafe {
             libc::openpty(
                 &mut master,
                 &mut slave,
                 std::ptr::null_mut(),
-                std::ptr::null(),
-                &ws,
+                std::ptr::null_mut::<libc::termios>(),
+                &raw mut ws,
             )
         };
         if rc != 0 {
