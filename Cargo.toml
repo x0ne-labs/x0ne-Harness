@@ -123,7 +123,7 @@ uuid              = { version = "1", features = ["v7", "serde"] }
 # Low-level libc (cfg(unix) only — Windows builds skip this dep)
 libc              = "0.2"
 landlock          = "0.4"
-agent-client-protocol = "2.2"
+agent-client-protocol = "3.6"
 # Pinned to one commit of the public Engine repository; cargo fetches it even
 # with no feature that uses it. Local Engine work: a [patch] in an unpublished
 # .cargo/config.toml (CONTRIBUTING.md).
