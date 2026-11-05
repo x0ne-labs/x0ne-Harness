@@ -189,6 +189,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends bubblewrap openssh-client
+      # AppArmor on ubuntu-24.04 restricts unprivileged user namespaces: bwrap failed with
+      # "Failed RTM_NEWADDR: Operation not permitted" on 2026-11-05. The runner is disposable.
+      # https://github.com/actions/runner-images/issues/10443
+      - name: Allow unprivileged user namespaces
+        run: |
+          sudo sysctl kernel.apparmor_restrict_unprivileged_userns
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - run: rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: test (all features, doctests included)
