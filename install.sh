@@ -14,9 +14,9 @@
 #
 # It detects the OS and the CPU, downloads the archive and SHA256SUMS of the
 # release, refuses on a missing or mismatching checksum, verifies the build
-# provenance with `gh attestation verify` when gh is installed and logged in,
-# then copies three binaries into the install directory. No sudo. It never
-# edits a shell startup file. Running it again replaces the binaries.
+# provenance with `gh attestation verify` when gh 2.56+ is logged in (else it
+# says so), then copies three binaries into the install directory. No sudo.
+# It never edits a shell startup file. Running it again replaces the binaries.
 
 set -eu
 
@@ -120,18 +120,49 @@ verify_checksum() {
     say "Checksum verified (SHA-256)"
 }
 
-# A checksum served next to the archive only proves the download is intact;
-# the attestation proves the archive was built by this repository's release
-# workflow from the tagged source.
-verify_provenance() {
-    if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-        gh attestation verify "${TMP}/${ASSET}" --repo "$REPO" >/dev/null ||
-            die "provenance verification FAILED for ${ASSET}. Nothing was installed."
-        say "Provenance verified (gh attestation verify)"
-    else
-        say "Provenance not checked: the GitHub CLI is absent or not logged in. To check it:"
-        say "  gh attestation verify ${ASSET} --repo ${REPO}"
+# gh_unusable: prints why gh cannot verify the provenance, nothing if it can.
+# gh has `attestation` from 2.49 and --signer-workflow from 2.51; 2.51 to 2.55
+# cannot read the current Sigstore trusted root (measured 2026-11-05).
+gh_unusable() {
+    if ! command -v gh >/dev/null 2>&1; then
+        say "the GitHub CLI (gh) is not installed (gh 2.56 or later verifies it)"
+        return 0
     fi
+    v=$(gh --version 2>/dev/null | awk 'NR == 1 { print $3 }')
+    major=${v%%.*}
+    minor=${v#*.}
+    minor=${minor%%.*}
+    case "${major}:${minor}" in
+        *[!0-9:]* | :* | *:) ;; # unreadable (a dev build): the help decides
+        *)
+            if [ "$major" -lt 2 ] || { [ "$major" -eq 2 ] && [ "$minor" -lt 56 ]; }; then
+                say "gh ${v} is too old (gh 2.56 or later verifies it)"
+                return 0
+            fi
+            ;;
+    esac
+    if ! gh attestation verify --help 2>&1 | grep -q -e '--signer-workflow'; then
+        say "gh ${v:-(unknown version)} has no 'gh attestation verify --signer-workflow' (gh 2.56 or later has it)"
+        return 0
+    fi
+    gh auth status >/dev/null 2>&1 || say "gh is not logged in (gh auth login)"
+}
+
+# The checksum only proves the download intact; the attestation proves the
+# release workflow built it from the tagged source. A gh that cannot verify
+# counts as no gh; a gh that verifies and fails stops the install.
+verify_provenance() {
+    why=$(gh_unusable)
+    if [ -n "$why" ]; then
+        say "Provenance NOT verified: ${why}."
+        say "Only the SHA-256 checksum was checked, against a SHA256SUMS from the same server."
+        say "To verify a release by hand: https://github.com/${REPO}/blob/main/docs/install.md#from-a-release"
+        return 0
+    fi
+    gh attestation verify "${TMP}/${ASSET}" --repo "$REPO" \
+        --signer-workflow "${REPO}/.github/workflows/release.yml" >/dev/null ||
+        die "provenance verification FAILED for ${ASSET}. Nothing was installed."
+    say "Provenance verified (gh attestation verify)"
 }
 
 # ── Install and uninstall ────────────────────────────────────────────────────

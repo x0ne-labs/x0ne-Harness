@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `install.sh` refused to install when a GitHub CLI older than 2.56 was
+  logged in, and said "provenance verification FAILED": gh has
+  `attestation` from 2.49 and `--signer-workflow` from 2.51, and up to 2.55
+  it cannot read the current Sigstore trusted root (Debian 13 ships 2.46).
+  Such a gh now counts as no gh: the install goes on with the SHA-256 check
+  and says the provenance is not verified, and why. A gh that verifies and
+  fails still stops the install. The verification also checks the signing
+  workflow (`--signer-workflow .../release.yml`).
+  `scripts/test-install-provenance.sh` checks these cases with a fake gh.
+
 ## [0.2.0] - 2026-11-05
 
 **Preview.** Usable today; defaults and interfaces may change before 1.0.

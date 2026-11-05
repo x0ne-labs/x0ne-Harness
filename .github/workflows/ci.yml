@@ -328,5 +328,6 @@ jobs:
         with:
           persist-credentials: false
       - run: sh -n install.sh
-      - run: shellcheck --shell=sh install.sh scripts/test-install-https-only.sh
+      - run: shellcheck --shell=sh install.sh scripts/test-install-https-only.sh scripts/test-install-provenance.sh
       - run: sh scripts/test-install-https-only.sh
+      - run: sh scripts/test-install-provenance.sh
