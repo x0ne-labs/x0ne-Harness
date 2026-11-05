@@ -57,7 +57,7 @@ jobs:
           obj=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq '.object.type + " " + .object.sha')
           read -r type sha <<< "$obj"
           if [ "$type" != tag ]; then echo "::error::${TAG} is a lightweight tag"; exit 1; fi
-          verdict=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${sha}" --jq '.verification.verified|tostring + " " + .verification.reason')
+          verdict=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${sha}" --jq '(.verification.verified | tostring) + " " + .verification.reason')
           echo "signature: ${verdict}"
           if [ "${verdict%% *}" != true ]; then echo "::error::${TAG} is not signed by a verified key"; exit 1; fi
       - name: Tag equals the workspace version
