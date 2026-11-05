@@ -173,7 +173,8 @@ try gh-dev-without-attestation yes good installed \
 try gh-logged-out yes good installed "Provenance NOT verified: gh is not logged in" 2.103.3 full 1 0
 verified gh-logged-out no
 try gh-passes yes good installed "Provenance verified (gh attestation verify)" 2.103.3 full 0 0
-want="--repo x0ne-labs/x0ne-Harness --signer-workflow x0ne-labs/x0ne-Harness/.github/workflows/release.yml"
+repo=$(sed -n 's/^REPO="\(.*\)"$/\1/p' "$installer")
+want="--repo ${repo:-?} --signer-workflow ${repo:-?}/.github/workflows/release.yml"
 if grep -qF -e "$want" "$tmp/gh-passes.gh"; then
     echo "ok    gh-passes: gh verified with $want"
 else
