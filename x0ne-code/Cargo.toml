@@ -69,7 +69,7 @@ x0ne-confidential.workspace = true
 # Test-only: `--tui` and `--matrix` driven in a pseudo-terminal, their
 # screen read back. Same versions as x0ne-orchestrator's, no new crate.
 portable-pty = "0.9"
-vt100 = "0.16"
+vt100 = "0.18"
 
 [lints]
 workspace = true

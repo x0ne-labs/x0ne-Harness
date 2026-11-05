@@ -79,7 +79,7 @@ rand = "0.10"
 # interactive program runs live INSIDE the TUI. Replaces the older
 # suspend-mode approach (LeaveAlternateScreen, run, return) with a
 # proper embedded terminal grid we render as ratatui cells.
-vt100 = "0.16"
+vt100 = "0.18"
 portable-pty = "0.9"
 unicode-width = "0.2"
 textwrap = { version = "0.16", default-features = false, features = ["unicode-width"] }
