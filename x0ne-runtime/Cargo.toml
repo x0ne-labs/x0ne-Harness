@@ -105,7 +105,7 @@ libc = { workspace = true }
 # version: two `wat` versions are two encoders. Dev-dependency: nothing ships.
 wat = "=1.236.0"
 # Test only: enumerates every wasm proposal so the engine lists stay decided.
-wasmparser = "=0.236.0"
+wasmparser = "=0.262.0"
 
 # ── Cargo features ────────────────────────────────────────────────────────────
 #
